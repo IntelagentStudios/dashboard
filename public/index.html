@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Login - Intelagent Studios</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #f5f5f0;
+            --primary-dark: #e8e8dd;
+            --primary-light: #fafaf7;
+            --accent: #d4d4c5;
+            --background-dark: #1a1a1a;
+            --background-darker: #0f0f0f;
+            --surface: #262626;
+            --surface-light: #404040;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-on-primary: #1a1a1a;
+            --border: #404040;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--background-dark);
+            background-image: 
+                linear-gradient(to bottom, var(--background-dark), var(--background-darker));
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Login Container */
+        .login-container {
+            background: var(--surface);
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid var(--border);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            letter-spacing: -0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: var(--background-dark);
+            color: var(--text-primary);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(245, 245, 240, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: var(--text-on-primary);
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(245, 245, 240, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            display: none;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: none;
+            border: 2px solid var(--border);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h2 {
+            color: var(--text-primary);
+            font-weight: 400;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Form -->
+    <div class="login-container" id="loginContainer">
+        <div class="logo">Intelagent Studios</div>
+        <h2 style="text-align: center; margin-bottom: 2rem; font-weight: 400;">Chatbot Dashboard</h2>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label" for="licenseKey">License Key</label>
+                <input 
+                    type="text" 
+                    id="licenseKey" 
+                    class="form-input" 
+                    placeholder="INTL-XXXX-XXXX-XXXX"
+                    required
+                >
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" for="domain">Domain</label>
+                <input 
+                    type="text" 
+                    id="domain" 
+                    class="form-input" 
+                    placeholder="yourdomain.com"
+                    required
+                >
+            </div>
+            
+            <div class="remember-me">
+                <input type="checkbox" id="rememberMe" checked>
+                <label for="rememberMe">Remember me on this device</label>
+            </div>
+            
+            <button type="submit" class="btn">
+                <span id="btnText">Access Dashboard</span>
+                <div class="spinner" id="spinner"></div>
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Check for saved credentials on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLicense = localStorage.getItem('licenseKey');
+            const savedDomain = localStorage.getItem('domain');
+            
+            if (savedLicense && savedDomain) {
+                document.getElementById('licenseKey').value = savedLicense;
+                document.getElementById('domain').value = savedDomain;
+                // Auto-login if remember me was checked
+                if (localStorage.getItem('rememberMe') === 'true') {
+                    validateAndLogin(savedLicense, savedDomain);
+                }
+            }
+        });
+
+        // Handle form submission
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const licenseKey = document.getElementById('licenseKey').value.trim();
+            const domain = document.getElementById('domain').value.trim().toLowerCase();
+            const rememberMe = document.getElementById('rememberMe').checked;
+            
+            // Save to localStorage if remember me is checked
+            if (rememberMe) {
+                localStorage.setItem('licenseKey', licenseKey);
+                localStorage.setItem('domain', domain);
+                localStorage.setItem('rememberMe', 'true');
+            } else {
+                localStorage.removeItem('licenseKey');
+                localStorage.removeItem('domain');
+                localStorage.removeItem('rememberMe');
+            }
+            
+            validateAndLogin(licenseKey, domain);
+        });
+
+        async function validateAndLogin(licenseKey, domain) {
+            const errorDiv = document.getElementById('errorMessage');
+            const spinner = document.getElementById('spinner');
+            const btnText = document.getElementById('btnText');
+            
+            // Reset error
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            
+            // Show loading
+            spinner.style.display = 'block';
+            btnText.style.display = 'none';
+            
+            try {
+                // Call API to validate license key and domain
+                const response = await fetch('/api/validate-dashboard-access', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ licenseKey, domain })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.valid) {
+                    // Store session with token
+                    sessionStorage.setItem('dashboardAuth', JSON.stringify({
+                        token: data.token,
+                        licenseKey,
+                        domain: data.isMaster ? 'ALL_DOMAINS' : domain,
+                        isMaster: data.isMaster,
+                        timestamp: Date.now()
+                    }));
+                    
+                    // Redirect to dashboard
+                    window.location.href = '/dashboard';
+                } else {
+                    throw new Error(data.error || 'Invalid license key or domain');
+                }
+                
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Unable to connect to dashboard';
+                errorDiv.style.display = 'block';
+            } finally {
+                spinner.style.display = 'none';
+                btnText.style.display = 'inline';
+            }
+        }
+    </script>
+</body>
+</html>
