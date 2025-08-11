@@ -49,14 +49,13 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Validate dashboard access
+// Validate dashboard access - UPDATED FOR YOUR TABLE STRUCTURE
 app.post('/api/validate-dashboard-access', async (req, res) => {
     const { licenseKey, domain } = req.body;
     
     try {
         // Check if it's the master key
         if (licenseKey === MASTER_KEY) {
-            // Create master token
             const token = jwt.sign(
                 {
                     licenseKey,
@@ -78,7 +77,7 @@ app.post('/api/validate-dashboard-access', async (req, res) => {
         const result = await pool.query(
             `SELECT * FROM licenses 
              WHERE license_key = $1 
-             AND status = 'active'`,
+             AND (status = 'active' OR status IS NULL)`,
             [licenseKey]
         );
         
@@ -88,17 +87,29 @@ app.post('/api/validate-dashboard-access', async (req, res) => {
         
         const license = result.rows[0];
         
-        // Verify domain matches
-        const domainCheck = await pool.query(
-            `SELECT DISTINCT domain 
-             FROM chatbot_logs 
-             WHERE license_key = $1 
-             AND LOWER(domain) = LOWER($2) 
-             LIMIT 1`,
-            [licenseKey, domain]
-        );
+        // Check domain - first in licenses table, then in chatbot_logs
+        let domainValid = false;
         
-        if (domainCheck.rows.length === 0) {
+        // Check if domain matches in licenses table
+        if (license.domain && license.domain.toLowerCase() === domain.toLowerCase()) {
+            domainValid = true;
+        } else {
+            // Check in chatbot_logs
+            const domainCheck = await pool.query(
+                `SELECT DISTINCT domain 
+                 FROM chatbot_logs 
+                 WHERE license_key = $1 
+                 AND LOWER(domain) = LOWER($2) 
+                 LIMIT 1`,
+                [licenseKey, domain]
+            );
+            
+            if (domainCheck.rows.length > 0) {
+                domainValid = true;
+            }
+        }
+        
+        if (!domainValid) {
             return res.status(401).json({ valid: false, error: 'Domain not found for this license' });
         }
         
@@ -142,7 +153,7 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// Get dashboard data - adapts based on user type
+// Get dashboard data - UPDATED FOR YOUR TABLE STRUCTURE
 app.get('/api/dashboard-data', authenticateToken, async (req, res) => {
     const { domain, product } = req.query;
     const { isMaster, licenseKey } = req.user;
@@ -151,72 +162,66 @@ app.get('/api/dashboard-data', authenticateToken, async (req, res) => {
         let stats, conversations, domains, licenses, products;
         
         if (isMaster) {
-            // Get all products first
+            // Get all products
             products = await pool.query(`
                 SELECT DISTINCT 
-                    product_type,
+                    COALESCE(product_type, 'chatbot') as product_type,
                     COUNT(DISTINCT license_key) as license_count,
                     COUNT(DISTINCT email) as customer_count
                 FROM licenses
-                WHERE status = 'active'
+                WHERE status = 'active' OR status IS NULL
                 GROUP BY product_type
             `);
             
-            // Master sees everything - filter by product if specified
+            // Master stats - updated to use your column names
             if (product === 'chatbot' || !product) {
-                // Chatbot specific stats
                 stats = await pool.query(`
                     SELECT 
-                        COUNT(DISTINCT cl.conversation_id) as total_conversations,
+                        COUNT(DISTINCT COALESCE(cl.conversation_id, cl.session_id)) as total_conversations,
                         COUNT(DISTINCT cl.user_id) as unique_users,
-                        COUNT(DISTINCT cl.domain) as total_domains,
+                        COUNT(DISTINCT COALESCE(cl.domain, l.domain)) as total_domains,
                         COUNT(DISTINCT l.license_key) as total_licenses,
                         COUNT(DISTINCT CASE 
                             WHEN l.created_at >= NOW() - INTERVAL '30 days' 
                             THEN l.license_key 
                         END) as new_customers_month,
-                        AVG(CASE 
-                            WHEN cl.role = 'assistant' 
-                            THEN EXTRACT(EPOCH FROM cl.created_at - lag(cl.created_at) OVER (PARTITION BY cl.conversation_id ORDER BY cl.created_at))
-                        END) as avg_response_time,
-                        SUM(CASE WHEN l.subscription_id IS NOT NULL THEN 1 ELSE 0 END) as active_subscriptions,
-                        SUM(CAST(REGEXP_REPLACE(l.purchase_amount, '[^0-9.]', '', 'g') AS NUMERIC)) as total_revenue
+                        AVG(
+                            EXTRACT(EPOCH FROM (
+                                lead(cl.timestamp) OVER (PARTITION BY cl.session_id ORDER BY cl.timestamp) - cl.timestamp
+                            ))
+                        ) as avg_response_time,
+                        COUNT(DISTINCT l.subscription_id) as active_subscriptions,
+                        0 as total_revenue
                     FROM chatbot_logs cl
                     LEFT JOIN licenses l ON cl.license_key = l.license_key
-                    WHERE cl.created_at >= NOW() - INTERVAL '30 days'
-                    ${domain ? 'AND cl.domain = $1' : ''}
+                    WHERE cl.timestamp >= NOW() - INTERVAL '30 days'
+                    ${domain ? 'AND (cl.domain = $1 OR l.domain = $1)' : ''}
                 `, domain ? [domain] : []);
                 
-                // Get chatbot conversations
+                // Get conversations - updated for your structure
                 conversations = await pool.query(`
                     SELECT 
-                        cl.conversation_id,
-                        cl.domain,
+                        COALESCE(cl.conversation_id, cl.session_id) as conversation_id,
+                        cl.session_id,
+                        COALESCE(cl.domain, l.domain) as domain,
                         cl.user_id,
                         l.customer_name,
-                        MIN(cl.created_at) as started_at,
-                        MAX(cl.created_at) as last_message_at,
+                        MIN(cl.timestamp) as started_at,
+                        MAX(cl.timestamp) as last_message_at,
                         COUNT(*) as message_count,
-                        bool_or(cl.role = 'assistant' AND cl.created_at > NOW() - INTERVAL '5 minutes') as is_active
+                        CASE 
+                            WHEN MAX(cl.timestamp) > NOW() - INTERVAL '5 minutes' 
+                            THEN true 
+                            ELSE false 
+                        END as is_active
                     FROM chatbot_logs cl
                     LEFT JOIN licenses l ON cl.license_key = l.license_key
-                    WHERE cl.created_at >= NOW() - INTERVAL '7 days'
-                    ${domain ? 'AND cl.domain = $1' : ''}
-                    GROUP BY cl.conversation_id, cl.domain, cl.user_id, l.customer_name
-                    ORDER BY MAX(cl.created_at) DESC
+                    WHERE cl.timestamp >= NOW() - INTERVAL '7 days'
+                    ${domain ? 'AND (cl.domain = $1 OR l.domain = $1)' : ''}
+                    GROUP BY cl.conversation_id, cl.session_id, cl.domain, l.domain, cl.user_id, l.customer_name
+                    ORDER BY MAX(cl.timestamp) DESC
                     LIMIT 100
                 `, domain ? [domain] : []);
-            } else {
-                // Other product stats (when you add them)
-                stats = await pool.query(`
-                    SELECT 
-                        COUNT(DISTINCT license_key) as total_licenses,
-                        COUNT(DISTINCT email) as total_customers,
-                        SUM(CAST(REGEXP_REPLACE(purchase_amount, '[^0-9.]', '', 'g') AS NUMERIC)) as total_revenue
-                    FROM licenses
-                    WHERE product_type = $1
-                    AND status = 'active'
-                `, [product]);
             }
             
             // Get all licenses
@@ -225,74 +230,82 @@ app.get('/api/dashboard-data', authenticateToken, async (req, res) => {
                     l.license_key,
                     l.email,
                     l.customer_name,
-                    l.product_type,
+                    COALESCE(l.product_type, 'chatbot') as product_type,
                     l.created_at,
                     l.subscription_status,
                     l.next_billing_date,
-                    COALESCE(cl.domain, 'Not activated') as domain,
-                    COUNT(DISTINCT cl.conversation_id) as usage_count
+                    COALESCE(l.domain, 'Not activated') as domain,
+                    COUNT(DISTINCT cl.session_id) as usage_count
                 FROM licenses l
                 LEFT JOIN chatbot_logs cl ON l.license_key = cl.license_key
-                WHERE l.status = 'active'
+                WHERE l.status = 'active' OR l.status IS NULL
                 ${product ? 'AND l.product_type = $1' : ''}
                 GROUP BY l.license_key, l.email, l.customer_name, l.product_type, 
-                         l.created_at, l.subscription_status, l.next_billing_date, cl.domain
+                         l.created_at, l.subscription_status, l.next_billing_date, l.domain
                 ORDER BY l.created_at DESC
                 LIMIT 100
             `, product ? [product] : []);
             
-            // Get domains list for filter
+            // Get domains list
             domains = await pool.query(`
                 SELECT DISTINCT 
-                    cl.domain,
-                    cl.license_key,
-                    COUNT(DISTINCT cl.conversation_id) as conversation_count,
-                    MAX(cl.created_at) as last_activity
+                    COALESCE(cl.domain, l.domain) as domain,
+                    COALESCE(cl.license_key, l.license_key) as license_key,
+                    COUNT(DISTINCT cl.session_id) as conversation_count,
+                    MAX(cl.timestamp) as last_activity
                 FROM chatbot_logs cl
-                GROUP BY cl.domain, cl.license_key
+                FULL OUTER JOIN licenses l ON cl.license_key = l.license_key
+                WHERE cl.domain IS NOT NULL OR l.domain IS NOT NULL
+                GROUP BY COALESCE(cl.domain, l.domain), COALESCE(cl.license_key, l.license_key)
                 ORDER BY last_activity DESC
             `);
             
         } else {
-            // Customer sees only their domain
+            // Customer view - updated for your structure
             stats = await pool.query(`
                 SELECT 
-                    COUNT(DISTINCT conversation_id) as total_conversations,
+                    COUNT(DISTINCT COALESCE(conversation_id, session_id)) as total_conversations,
                     COUNT(DISTINCT user_id) as unique_users,
                     1 as total_domains,
-                    AVG(CASE 
-                        WHEN role = 'assistant' 
-                        THEN EXTRACT(EPOCH FROM created_at - lag(created_at) OVER (PARTITION BY conversation_id ORDER BY created_at))
-                    END) as avg_response_time
+                    AVG(
+                        EXTRACT(EPOCH FROM (
+                            lead(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp) - timestamp
+                        ))
+                    ) as avg_response_time
                 FROM chatbot_logs
                 WHERE license_key = $1 
                 AND domain = $2
-                AND created_at >= NOW() - INTERVAL '30 days'
+                AND timestamp >= NOW() - INTERVAL '30 days'
             `, [licenseKey, req.user.domain]);
             
             conversations = await pool.query(`
                 SELECT 
-                    conversation_id,
+                    COALESCE(conversation_id, session_id) as conversation_id,
+                    session_id,
                     user_id,
-                    MIN(created_at) as started_at,
-                    MAX(created_at) as last_message_at,
+                    MIN(timestamp) as started_at,
+                    MAX(timestamp) as last_message_at,
                     COUNT(*) as message_count,
-                    bool_or(role = 'assistant' AND created_at > NOW() - INTERVAL '5 minutes') as is_active
+                    CASE 
+                        WHEN MAX(timestamp) > NOW() - INTERVAL '5 minutes' 
+                        THEN true 
+                        ELSE false 
+                    END as is_active
                 FROM chatbot_logs
                 WHERE license_key = $1 
                 AND domain = $2
-                AND created_at >= NOW() - INTERVAL '7 days'
-                GROUP BY conversation_id, user_id
-                ORDER BY MAX(created_at) DESC
+                AND timestamp >= NOW() - INTERVAL '7 days'
+                GROUP BY conversation_id, session_id, user_id
+                ORDER BY MAX(timestamp) DESC
                 LIMIT 50
             `, [licenseKey, req.user.domain]);
             
             // Get customer's products
             products = await pool.query(`
-                SELECT DISTINCT product_type
+                SELECT DISTINCT COALESCE(product_type, 'chatbot') as product_type
                 FROM licenses
                 WHERE email = $1
-                AND status = 'active'
+                AND (status = 'active' OR status IS NULL)
             `, [req.user.email]);
         }
         
@@ -311,7 +324,7 @@ app.get('/api/dashboard-data', authenticateToken, async (req, res) => {
     }
 });
 
-// Get conversation messages
+// Get conversation messages - UPDATED FOR YOUR TABLE STRUCTURE
 app.get('/api/conversations/:conversationId', authenticateToken, async (req, res) => {
     const { conversationId } = req.params;
     const { isMaster, licenseKey } = req.user;
@@ -319,22 +332,26 @@ app.get('/api/conversations/:conversationId', authenticateToken, async (req, res
     try {
         let query = `
             SELECT 
-                role,
-                content,
-                created_at
+                COALESCE(role, 
+                    CASE 
+                        WHEN customer_message IS NOT NULL THEN 'user'
+                        ELSE 'assistant'
+                    END
+                ) as role,
+                COALESCE(content, customer_message, chatbot_response) as content,
+                timestamp as created_at
             FROM chatbot_logs
-            WHERE conversation_id = $1
+            WHERE (conversation_id = $1 OR session_id = $1)
         `;
         
         const params = [conversationId];
         
-        // If not master, filter by license key
         if (!isMaster) {
             query += ' AND license_key = $2';
             params.push(licenseKey);
         }
         
-        query += ' ORDER BY created_at ASC';
+        query += ' ORDER BY timestamp ASC';
         
         const messages = await pool.query(query, params);
         
@@ -354,12 +371,17 @@ app.get('/api/export', authenticateToken, async (req, res) => {
     try {
         let query = `
             SELECT 
-                conversation_id,
-                domain,
+                COALESCE(conversation_id, session_id) as conversation_id,
+                COALESCE(domain, $3) as domain,
                 user_id,
-                role,
-                content,
-                created_at
+                COALESCE(role, 
+                    CASE 
+                        WHEN customer_message IS NOT NULL THEN 'user'
+                        ELSE 'assistant'
+                    END
+                ) as role,
+                COALESCE(content, customer_message, chatbot_response) as content,
+                timestamp as created_at
             FROM chatbot_logs
             WHERE 1=1
         `;
@@ -374,17 +396,20 @@ app.get('/api/export', authenticateToken, async (req, res) => {
             params.push(userDomain);
         }
         
+        params.push(userDomain || 'unknown'); // For the COALESCE default
+        paramIndex++;
+        
         if (startDate) {
-            query += ` AND created_at >= $${paramIndex++}`;
+            query += ` AND timestamp >= $${paramIndex++}`;
             params.push(startDate);
         }
         
         if (endDate) {
-            query += ` AND created_at <= $${paramIndex++}`;
+            query += ` AND timestamp <= $${paramIndex++}`;
             params.push(endDate);
         }
         
-        query += ' ORDER BY created_at DESC';
+        query += ' ORDER BY timestamp DESC';
         
         const data = await pool.query(query, params);
         
