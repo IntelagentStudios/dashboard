@@ -13,6 +13,7 @@ import {
   Package,
   BarChart3
 } from 'lucide-react'
+import ConversationsChart from './conversations-chart'
 
 interface Product {
   id: string
@@ -115,6 +116,8 @@ export default function ProductsView() {
             </CardContent>
           </Card>
         </div>
+
+        <ConversationsChart />
 
         <Card>
           <CardHeader>

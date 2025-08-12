@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast'
 import RealtimeIndicator from './realtime-indicator'
 import StatsCards from './stats-cards'
 import ConversationsChart from './conversations-chart'
+import DownloadsActivationsChart from './downloads-activations-chart'
 import LicensesTable from './licenses-table'
 import ProductsView from './products-view'
 
@@ -182,8 +183,8 @@ export default function DashboardClient() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
+              <DownloadsActivationsChart />
               <div className="grid gap-4 md:grid-cols-2">
-                <ConversationsChart />
                 <Card>
                   <CardHeader>
                     <CardTitle>Product Distribution</CardTitle>
@@ -211,6 +212,44 @@ export default function DashboardClient() {
                           <span>Sales Agent</span>
                         </div>
                         <span className="font-mono">5%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>License Activity</CardTitle>
+                    <CardDescription>Recent license events</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-green-500" />
+                          <span>New license activated</span>
+                        </div>
+                        <span className="text-muted-foreground">2m ago</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-blue-500" />
+                          <span>License downloaded</span>
+                        </div>
+                        <span className="text-muted-foreground">15m ago</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                          <span>License renewed</span>
+                        </div>
+                        <span className="text-muted-foreground">1h ago</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-red-500" />
+                          <span>License expired</span>
+                        </div>
+                        <span className="text-muted-foreground">3h ago</span>
                       </div>
                     </div>
                   </CardContent>
@@ -284,8 +323,8 @@ export default function DashboardClient() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
+              <DownloadsActivationsChart />
               <div className="grid gap-4 md:grid-cols-2">
-                <ConversationsChart />
                 <Card>
                   <CardHeader>
                     <CardTitle>Usage Summary</CardTitle>
@@ -305,6 +344,28 @@ export default function DashboardClient() {
                         <span>Response Rate</span>
                         <span className="font-mono text-lg">98.5%</span>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Quick Actions</CardTitle>
+                    <CardDescription>Common tasks and configurations</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Button className="w-full justify-start" variant="outline" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download License Key
+                      </Button>
+                      <Button className="w-full justify-start" variant="outline" size="sm">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Configure Widget
+                      </Button>
+                      <Button className="w-full justify-start" variant="outline" size="sm">
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        View Conversations
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

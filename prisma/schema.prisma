@@ -5,48 +5,58 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public"]
 }
 
 model License {
-  licenseKey         String   @id @map("license_key") @db.VarChar(20)
-  email              String?  @db.VarChar(255)
-  customerName       String?  @map("customer_name") @db.VarChar(255)
-  domain             String?  @db.VarChar(255)
-  status             String?  @db.VarChar(20)
-  subscriptionId     String?  @map("subscription_id") @db.VarChar(255)
-  subscriptionStatus String?  @map("subscription_status") @db.VarChar(50)
+  licenseKey         String    @id @map("license_key") @db.VarChar(20)
+  email              String?   @db.VarChar(255)
   createdAt          DateTime? @map("created_at")
-  productType        String?  @default("chatbot") @map("product_type") @db.VarChar(50)
-  plan               String?  @db.VarChar(50)
+  usedAt             DateTime? @map("used_at")
+  domain             String?   @db.VarChar(255)
+  siteKey            String?   @map("site_key") @db.VarChar(255)
+  status             String?   @db.VarChar(20)
+  subscriptionId     String?   @map("subscription_id") @db.VarChar(255)
+  lastPaymentDate    DateTime? @map("last_payment_date")
+  nextBillingDate    DateTime? @map("next_billing_date")
+  subscriptionStatus String?   @map("subscription_status") @db.VarChar(50)
+  customerName       String?   @map("customer_name") @db.VarChar(255)
+  lastIndexed        DateTime? @map("last_indexed")
+  plan               String?   @db.VarChar(50)
+  productType        String?   @default("chatbot") @map("product_type") @db.VarChar(50)
   
   chatbotLogs        ChatbotLog[]
   
   @@map("licenses")
+  @@schema("public")
 }
 
 model ChatbotLog {
   id                Int       @id @default(autoincrement())
   sessionId         String?   @map("session_id") @db.VarChar(255)
+  customerMessage   String?   @map("customer_message") @db.Text
+  chatbotResponse   String?   @map("chatbot_response") @db.Text
+  timestamp         DateTime? @db.Timestamp(6)
+  intentDetected    String?   @map("intent_detected") @db.VarChar(255)
   conversationId    String?   @map("conversation_id") @db.VarChar(255)
   licenseKey        String    @map("license_key") @db.VarChar(20)
   domain            String?   @db.VarChar(255)
   userId            String?   @map("user_id") @db.VarChar(255)
-  customerMessage   String?   @map("customer_message") @db.Text
-  chatbotResponse   String?   @map("chatbot_response") @db.Text
   role              String?   @db.VarChar(50)
   content           String?   @db.Text
-  timestamp         DateTime? @db.Timestamp(6)
   createdAt         DateTime? @map("created_at") @db.Timestamp(6)
   
   license           License   @relation(fields: [licenseKey], references: [licenseKey])
   
   @@map("chatbot_logs")
+  @@schema("public")
 }
 
 model SharedItem {
@@ -59,6 +69,7 @@ model SharedItem {
   createdAt   DateTime  @default(now()) @map("created_at")
   
   @@map("shared_items")
+  @@schema("public")
 }
 
 model DomainLicense {
@@ -68,4 +79,5 @@ model DomainLicense {
   
   @@id([domain, licenseKey])
   @@map("domain_licenses")
+  @@schema("public")
 }
