@@ -11,12 +11,7 @@ export default function ConversationsChart() {
 
   useEffect(() => {
     fetchChartData()
-    
-    if (isRealtime) {
-      const interval = setInterval(fetchChartData, 10000)
-      return () => clearInterval(interval)
-    }
-  }, [isRealtime, dateRange])
+  }, [dateRange])
 
   const fetchChartData = async () => {
     try {

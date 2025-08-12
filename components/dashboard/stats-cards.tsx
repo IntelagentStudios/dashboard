@@ -16,12 +16,7 @@ export default function StatsCards() {
 
   useEffect(() => {
     fetchStats()
-    
-    if (isRealtime) {
-      const interval = setInterval(fetchStats, 5000)
-      return () => clearInterval(interval)
-    }
-  }, [isRealtime])
+  }, [])
 
   const fetchStats = async () => {
     try {
