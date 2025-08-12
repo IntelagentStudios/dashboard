@@ -29,22 +29,34 @@ export default function DownloadsActivationsChart() {
   const { isRealtime, dateRange } = useDashboardStore()
 
   // WebSocket for real-time updates
-  const { lastMessage } = useWebSocket(isRealtime ? 'downloads-activations' : null)
+  const { socket, lastUpdate } = useWebSocket(isRealtime ? 'downloads-activations' : undefined)
 
   useEffect(() => {
     fetchData()
   }, [dateRange])
 
   useEffect(() => {
-    if (lastMessage) {
-      // Update with real-time data
-      const update = JSON.parse(lastMessage)
-      setData(prev => ({
-        ...prev,
-        ...update
-      }))
+    if (socket && isRealtime) {
+      // Listen for real-time updates
+      socket.on('downloads-activations-update', (update) => {
+        setData(prev => ({
+          ...prev,
+          ...update
+        }))
+      })
+
+      return () => {
+        socket.off('downloads-activations-update')
+      }
     }
-  }, [lastMessage])
+  }, [socket, isRealtime])
+
+  useEffect(() => {
+    // Refetch data when lastUpdate changes (real-time trigger)
+    if (lastUpdate && isRealtime) {
+      fetchData()
+    }
+  }, [lastUpdate])
 
   const fetchData = async () => {
     setIsLoading(true)
