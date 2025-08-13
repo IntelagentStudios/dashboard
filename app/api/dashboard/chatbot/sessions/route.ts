@@ -169,17 +169,44 @@ export async function GET(request: NextRequest) {
         take: limit
       })
 
-      const formattedSessions = sessionDetails.map(session => ({
-        sessionId: session.sessionId,
-        domain: session.domain || 'Unknown',
-        licenseKey: auth.isMaster ? session.licenseKey : undefined,
-        messageCount: session._count.id,
-        startTime: session._min.timestamp,
-        lastActivity: session._max.timestamp,
-        duration: session._max.timestamp && session._min.timestamp
-          ? Math.round((session._max.timestamp.getTime() - session._min.timestamp.getTime()) / 1000)
-          : 0
-      }))
+      // Get actual domains from licenses
+      const licenseKeys = [...new Set(sessionDetails.map(s => s.licenseKey))]
+      const licenses = await prisma.license.findMany({
+        where: { licenseKey: { in: licenseKeys } },
+        select: {
+          licenseKey: true,
+          domain: true,
+          siteKey: true
+        }
+      })
+
+      const licenseMap = new Map(licenses.map(l => [l.licenseKey, l]))
+
+      const formattedSessions = sessionDetails.map(session => {
+        const license = licenseMap.get(session.licenseKey)
+        const actualDomain = session.domain || license?.domain || 'Not configured'
+        
+        const startTime = session._min.timestamp
+        const endTime = session._max.timestamp
+        let duration = 0
+        
+        if (startTime && endTime) {
+          const diff = endTime.getTime() - startTime.getTime()
+          if (diff > 0 && diff < 86400000) { // Less than 24 hours
+            duration = Math.round(diff / 1000)
+          }
+        }
+        
+        return {
+          sessionId: session.sessionId,
+          domain: actualDomain,
+          licenseKey: auth.isMaster ? session.licenseKey : undefined,
+          messageCount: session._count.id,
+          startTime,
+          lastActivity: endTime,
+          duration
+        }
+      })
 
       return NextResponse.json({
         summary: {

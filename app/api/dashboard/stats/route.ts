@@ -89,15 +89,15 @@ export async function GET() {
 
     // Basic revenue calculation (you can adjust prices based on your actual pricing)
     const planPrices: Record<string, number> = {
-      'basic': 29,
-      'pro': 99,
-      'enterprise': 299,
-      'starter': 19
+      'basic': 25,
+      'pro': 89,
+      'enterprise': 259,
+      'starter': 15
     }
 
     const revenue = subscriptions.reduce((total, sub) => {
       if (sub.subscriptionStatus === 'active' && sub.plan) {
-        return total + (planPrices[sub.plan.toLowerCase()] || 29)
+        return total + (planPrices[sub.plan.toLowerCase()] || 25)
       }
       return total
     }, 0)

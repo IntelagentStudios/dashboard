@@ -64,7 +64,7 @@ export default function StatsCards({ isMaster = false }: StatsCardsProps) {
   // Different cards for master vs customer
   const masterCards = [
     {
-      title: 'Total Licenses',
+      title: 'Total Licences',
       value: (stats.totalLicenses || 0).toLocaleString(),
       icon: Users,
       change: calculateChange(stats.totalLicenses || 0, previousStats.totalLicenses || 0),
@@ -87,7 +87,7 @@ export default function StatsCards({ isMaster = false }: StatsCardsProps) {
     },
     {
       title: 'Revenue',
-      value: (stats.revenue || 0) > 1000 ? `$${((stats.revenue || 0) / 1000).toFixed(1)}k` : `$${stats.revenue || 0}`,
+      value: (stats.revenue || 0) > 1000 ? `£${((stats.revenue || 0) / 1000).toFixed(1)}k` : `£${stats.revenue || 0}`,
       icon: DollarSign,
       change: calculateChange(stats.revenue || 0, previousStats.revenue || 0),
       color: 'text-orange-500',

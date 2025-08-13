@@ -179,7 +179,7 @@ export default function DashboardClient() {
               </TabsTrigger>
               <TabsTrigger value="licenses">
                 <Users className="h-4 w-4 mr-2" />
-                Licenses
+                Licences
               </TabsTrigger>
               <TabsTrigger value="settings">
                 <Settings className="h-4 w-4 mr-2" />
@@ -323,13 +323,13 @@ export default function DashboardClient() {
                           const url = window.URL.createObjectURL(blob)
                           const a = document.createElement('a')
                           a.href = url
-                          a.download = `license-${authData?.licenseKey}.json`
+                          a.download = `licence-${authData?.licenseKey}.json`
                           a.click()
                           window.URL.revokeObjectURL(url)
                         }}
                       >
                         <Download className="h-4 w-4 mr-2" />
-                        Download License Key
+                        Download Licence Key
                       </Button>
                       <Button 
                         className="w-full justify-start" 

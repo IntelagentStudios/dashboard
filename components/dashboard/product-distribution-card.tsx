@@ -42,7 +42,7 @@ export default function ProductDistributionCard() {
     <Card>
       <CardHeader>
         <CardTitle>Product Distribution</CardTitle>
-        <CardDescription>Active licenses by product type</CardDescription>
+        <CardDescription>Active licences by product type</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -80,7 +80,7 @@ export default function ProductDistributionCard() {
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-4">
-            No active licenses found
+            No active licences found
           </div>
         )}
       </CardContent>
