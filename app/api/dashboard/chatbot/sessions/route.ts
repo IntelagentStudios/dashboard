@@ -170,9 +170,9 @@ export async function GET(request: NextRequest) {
       })
 
       // Get actual domains from licenses
-      const licenseKeys = [...new Set(sessionDetails.map(s => s.licenseKey))]
+      const uniqueLicenseKeys = Array.from(new Set(sessionDetails.map(s => s.licenseKey)))
       const licenses = await prisma.license.findMany({
-        where: { licenseKey: { in: licenseKeys } },
+        where: { licenseKey: { in: uniqueLicenseKeys } },
         select: {
           licenseKey: true,
           domain: true,
