@@ -24,6 +24,9 @@ import RealtimeIndicator from './realtime-indicator'
 import StatsCards from './stats-cards'
 import ConversationsChart from './conversations-chart'
 import DownloadsActivationsChart from './downloads-activations-chart'
+import ProductDistributionCard from './product-distribution-card'
+import CustomerUsageSummary from './customer-usage-summary'
+import ChatbotConversations from './chatbot-conversations'
 import LicensesTable from './licenses-table'
 import ProductsView from './products-view'
 
@@ -185,37 +188,7 @@ export default function DashboardClient() {
             <TabsContent value="overview" className="space-y-4">
               <DownloadsActivationsChart />
               <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Product Distribution</CardTitle>
-                    <CardDescription>Active licenses by product type</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full bg-blue-500" />
-                          <span>Chatbot</span>
-                        </div>
-                        <span className="font-mono">85%</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full bg-green-500" />
-                          <span>Setup Agent</span>
-                        </div>
-                        <span className="font-mono">10%</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full bg-purple-500" />
-                          <span>Sales Agent</span>
-                        </div>
-                        <span className="font-mono">5%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <ProductDistributionCard />
                 <Card>
                   <CardHeader>
                     <CardTitle>License Activity</CardTitle>
@@ -325,28 +298,7 @@ export default function DashboardClient() {
             <TabsContent value="overview" className="space-y-4">
               <DownloadsActivationsChart />
               <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Usage Summary</CardTitle>
-                    <CardDescription>Your product usage this month</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span>Total Conversations</span>
-                        <span className="font-mono text-lg">1,234</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Active Users</span>
-                        <span className="font-mono text-lg">567</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Response Rate</span>
-                        <span className="font-mono text-lg">98.5%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <CustomerUsageSummary />
                 <Card>
                   <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
@@ -373,7 +325,7 @@ export default function DashboardClient() {
             </TabsContent>
 
             <TabsContent value="conversations">
-              <ConversationsChart />
+              <ChatbotConversations />
             </TabsContent>
 
             <TabsContent value="settings">

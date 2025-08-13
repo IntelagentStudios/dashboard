@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,68 +11,70 @@ import {
   Users,
   ChevronRight,
   Package,
-  BarChart3
+  BarChart3,
+  RefreshCw,
+  Construction
 } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import ConversationsChart from './conversations-chart'
+import ChatbotSessionsTable from './chatbot-sessions-table'
+import ChatbotConversations from './chatbot-conversations'
 
 interface Product {
   id: string
   name: string
   description: string
-  icon: any
-  color: string
-  stats: {
-    licenses: number
-    activeUsers: number
-    growth: string
-  }
+  licenses: number
+  activeUsers: number
+  growth: number
+  stats: any
 }
 
 export default function ProductsView() {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null)
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const products: Product[] = [
-    {
-      id: 'chatbot',
-      name: 'Chatbot',
-      description: 'AI-powered customer support chatbot',
-      icon: MessageSquare,
-      color: 'bg-blue-500',
-      stats: {
-        licenses: 85,
-        activeUsers: 3420,
-        growth: '+12.5%'
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/dashboard/products')
+      if (response.ok) {
+        const data = await response.json()
+        setProducts(data.products)
       }
-    },
-    {
-      id: 'setup-agent',
-      name: 'Setup Agent',
-      description: 'Automated onboarding and setup assistant',
-      icon: Settings2,
-      color: 'bg-green-500',
-      stats: {
-        licenses: 10,
-        activeUsers: 450,
-        growth: '+8.3%'
-      }
-    },
-    {
-      id: 'sales-agent',
-      name: 'Sales Agent',
-      description: 'AI sales representative and lead qualifier',
-      icon: TrendingUp,
-      color: 'bg-purple-500',
-      stats: {
-        licenses: 5,
-        activeUsers: 230,
-        growth: '+15.7%'
-      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error)
+    } finally {
+      setIsLoading(false)
     }
-  ]
+  }
+
+  // Map product IDs to icons and colors
+  const productConfig: Record<string, { icon: any; color: string }> = {
+    'chatbot': {
+      icon: MessageSquare,
+      color: 'bg-blue-500'
+    },
+    'setup-agent': {
+      icon: Settings2,
+      color: 'bg-green-500'
+    },
+    'sales-agent': {
+      icon: TrendingUp,
+      color: 'bg-purple-500'
+    }
+  }
 
   if (selectedProduct) {
     const product = products.find(p => p.id === selectedProduct)
     if (!product) return null
+
+    const config = productConfig[product.id] || { icon: Package, color: 'bg-gray-500' }
 
     return (
       <div className="space-y-4">
@@ -93,7 +95,7 @@ export default function ProductsView() {
               <CardTitle className="text-sm font-medium">Total Licenses</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{product.stats.licenses}</div>
+              <div className="text-2xl font-bold">{product.licenses}</div>
               <p className="text-xs text-muted-foreground">Active licenses</p>
             </CardContent>
           </Card>
@@ -102,7 +104,7 @@ export default function ProductsView() {
               <CardTitle className="text-sm font-medium">Active Users</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{product.stats.activeUsers.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{product.activeUsers.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">Last 30 days</p>
             </CardContent>
           </Card>
@@ -111,147 +113,182 @@ export default function ProductsView() {
               <CardTitle className="text-sm font-medium">Growth</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-500">{product.stats.growth}</div>
+              <div className={`text-2xl font-bold ${product.growth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {product.growth > 0 ? '+' : ''}{product.growth}%
+              </div>
               <p className="text-xs text-muted-foreground">Month over month</p>
             </CardContent>
           </Card>
         </div>
 
-        <ConversationsChart />
+        {/* Chatbot-specific content */}
+        {product.id === 'chatbot' ? (
+          <>
+            <Tabs defaultValue="overview" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="sessions">Sessions</TabsTrigger>
+                <TabsTrigger value="conversations">Conversations</TabsTrigger>
+                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Product-Specific Data</CardTitle>
-            <CardDescription>Detailed analytics for {product.name}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {product.id === 'chatbot' && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span>Total Conversations</span>
-                    <span className="font-mono">12,345</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Average Response Time</span>
-                    <span className="font-mono">1.2s</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Resolution Rate</span>
-                    <span className="font-mono">87%</span>
-                  </div>
-                </>
-              )}
-              {product.id === 'setup-agent' && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span>Setups Completed</span>
-                    <span className="font-mono">456</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Average Setup Time</span>
-                    <span className="font-mono">4.5 min</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Success Rate</span>
-                    <span className="font-mono">94%</span>
-                  </div>
-                </>
-              )}
-              {product.id === 'sales-agent' && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <span>Leads Generated</span>
-                    <span className="font-mono">789</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Conversion Rate</span>
-                    <span className="font-mono">23%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Average Deal Size</span>
-                    <span className="font-mono">$2,450</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              <TabsContent value="overview" className="space-y-4">
+                <ConversationsChart />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Chatbot Statistics</CardTitle>
+                    <CardDescription>Key performance metrics</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span>Total Conversations</span>
+                        <span className="font-mono">{product.stats?.totalConversations?.toLocaleString() || 0}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Average Response Time</span>
+                        <span className="font-mono">{product.stats?.averageResponseTime || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>Resolution Rate</span>
+                        <span className="font-mono">{product.stats?.resolutionRate || 0}%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest events for {product.name}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>New license activated</span>
-                <span className="text-muted-foreground">2 min ago</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Configuration updated</span>
-                <span className="text-muted-foreground">15 min ago</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span>Usage spike detected</span>
-                <span className="text-muted-foreground">1 hour ago</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <TabsContent value="sessions">
+                <ChatbotSessionsTable view="by-domain" />
+              </TabsContent>
+
+              <TabsContent value="conversations">
+                <ChatbotConversations />
+              </TabsContent>
+
+              <TabsContent value="analytics">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Top Domains</CardTitle>
+                      <CardDescription>Most active domains by conversation count</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Analytics coming soon...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Intent Analysis</CardTitle>
+                      <CardDescription>Most common user intents</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Analytics coming soon...</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </>
+        ) : (
+          /* Other products - show coming soon message */
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center h-64">
+              <Construction className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">{product.name} - Coming Soon</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-md">
+                {product.id === 'setup-agent' 
+                  ? 'The Setup Agent is currently in development. This automated onboarding assistant will help users configure and deploy your products seamlessly.'
+                  : 'The Sales Agent is currently in development. This AI-powered sales representative will qualify leads and drive conversions automatically.'
+                }
+              </p>
+              <Badge variant="outline" className="mt-4">Under Development</Badge>
+            </CardContent>
+          </Card>
+        )}
       </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (products.length === 0) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="flex flex-col items-center justify-center h-64">
+          <Package className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-lg font-medium text-muted-foreground">No products found</p>
+          <p className="text-sm text-muted-foreground mt-2">No active product licenses in the system</p>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {products.map((product) => (
-        <Card 
-          key={product.id}
-          className="cursor-pointer hover:shadow-lg transition-shadow"
-          onClick={() => setSelectedProduct(product.id)}
-        >
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${product.color}`}>
-                  <product.icon className="h-5 w-5 text-white" />
+      {products.map((product) => {
+        const config = productConfig[product.id] || { icon: Package, color: 'bg-gray-500' }
+        const Icon = config.icon
+        
+        return (
+          <Card 
+            key={product.id}
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => setSelectedProduct(product.id)}
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${config.color}`}>
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{product.name}</CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                      {product.description}
+                    </CardDescription>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="text-xl font-bold">{product.licenses}</div>
+                  <div className="text-xs text-muted-foreground">Licenses</div>
                 </div>
                 <div>
-                  <CardTitle className="text-lg">{product.name}</CardTitle>
-                  <CardDescription className="text-xs mt-1">
-                    {product.description}
-                  </CardDescription>
+                  <div className="text-xl font-bold">{product.activeUsers}</div>
+                  <div className="text-xs text-muted-foreground">Users</div>
+                </div>
+                <div>
+                  <div className={`text-xl font-bold ${product.growth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {product.growth > 0 ? '+' : ''}{product.growth}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">Growth</div>
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <div className="text-xl font-bold">{product.stats.licenses}</div>
-                <div className="text-xs text-muted-foreground">Licenses</div>
+              <div className="mt-4 flex items-center justify-between">
+                <Badge variant="outline">Active</Badge>
+                <Button size="sm" variant="ghost">
+                  View Details →
+                </Button>
               </div>
-              <div>
-                <div className="text-xl font-bold">{product.stats.activeUsers}</div>
-                <div className="text-xs text-muted-foreground">Users</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-green-500">{product.stats.growth}</div>
-                <div className="text-xs text-muted-foreground">Growth</div>
-              </div>
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              <Badge variant="outline">Active</Badge>
-              <Button size="sm" variant="ghost">
-                View Details →
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        )
+      })}
 
       {/* Add Custom Product Card */}
       <Card className="border-dashed">

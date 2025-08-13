@@ -18,40 +18,93 @@ export async function GET() {
       whereClause = { licenseKey: auth.licenseKey }
     }
 
-    const [totalLicenses, activeConversations] = await Promise.all([
+    // Get real counts from database
+    const [totalLicenses, activeLicenses, totalConversations, recentConversations] = await Promise.all([
+      // Total licenses (only for master admin)
       auth.isMaster 
         ? prisma.license.count()
         : Promise.resolve(1),
+      
+      // Active licenses (with status = 'active')
+      auth.isMaster
+        ? prisma.license.count({
+            where: { status: 'active' }
+          })
+        : Promise.resolve(1),
+      
+      // Total conversations (unique sessions)
       prisma.chatbotLog.groupBy({
         by: ['sessionId'],
-        where: whereClause,
+        where: {
+          ...whereClause,
+          sessionId: { not: null }
+        },
         _count: true,
       }).then(result => result.length),
+      
+      // Recent conversations (last 30 days)
+      prisma.chatbotLog.groupBy({
+        by: ['sessionId'],
+        where: {
+          ...whereClause,
+          sessionId: { not: null },
+          timestamp: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          }
+        },
+        _count: true,
+      }).then(result => result.length)
     ])
 
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    // Calculate previous period for growth comparison
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-    const previousMonthConversations = await prisma.chatbotLog.groupBy({
+    const previousPeriodConversations = await prisma.chatbotLog.groupBy({
       by: ['sessionId'],
       where: {
         ...whereClause,
+        sessionId: { not: null },
         timestamp: {
-          lt: thirtyDaysAgo,
-        },
+          gte: sixtyDaysAgo,
+          lt: thirtyDaysAgo
+        }
       },
       _count: true,
     }).then(result => result.length)
 
-    const monthlyGrowth = previousMonthConversations > 0
-      ? Math.round(((activeConversations - previousMonthConversations) / previousMonthConversations) * 100)
-      : 100
+    // Calculate real growth percentage
+    const monthlyGrowth = previousPeriodConversations > 0
+      ? Math.round(((recentConversations - previousPeriodConversations) / previousPeriodConversations) * 100)
+      : recentConversations > 0 ? 100 : 0
 
-    const revenue = totalLicenses * 297
+    // Calculate revenue based on actual subscriptions
+    const subscriptions = await prisma.license.findMany({
+      where: auth.isMaster ? {} : { licenseKey: auth.licenseKey },
+      select: {
+        plan: true,
+        subscriptionStatus: true
+      }
+    })
+
+    // Basic revenue calculation (you can adjust prices based on your actual pricing)
+    const planPrices: Record<string, number> = {
+      'basic': 29,
+      'pro': 99,
+      'enterprise': 299,
+      'starter': 19
+    }
+
+    const revenue = subscriptions.reduce((total, sub) => {
+      if (sub.subscriptionStatus === 'active' && sub.plan) {
+        return total + (planPrices[sub.plan.toLowerCase()] || 29)
+      }
+      return total
+    }, 0)
 
     return NextResponse.json({
-      totalLicenses,
-      activeConversations,
+      totalLicenses: auth.isMaster ? totalLicenses : 1,
+      activeConversations: recentConversations,
       monthlyGrowth,
       revenue,
     })
