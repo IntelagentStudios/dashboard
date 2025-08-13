@@ -34,34 +34,24 @@ export async function POST(request: NextRequest) {
       ? {} 
       : { licenseKey: auth.licenseKey }
 
-    // Get licenses created (downloads) and used (activations) in the date range
+    // Get licenses created (downloads) in the date range
     const licenses = await prisma.license.findMany({
       where: {
         ...whereClause,
-        OR: [
-          { createdAt: { gte: startDate } },
-          { usedAt: { gte: startDate } }
-        ]
+        createdAt: { gte: startDate }
       },
       select: {
         createdAt: true,
-        usedAt: true,
       }
     })
 
-    // Group by date for downloads and activations
+    // Group by date for downloads
     const downloadsByDate = new Map<string, number>()
-    const activationsByDate = new Map<string, number>()
 
     licenses.forEach(license => {
-      if (license.createdAt && license.createdAt >= startDate) {
+      if (license.createdAt) {
         const dateKey = license.createdAt.toISOString().split('T')[0]
         downloadsByDate.set(dateKey, (downloadsByDate.get(dateKey) || 0) + 1)
-      }
-      
-      if (license.usedAt && license.usedAt >= startDate) {
-        const dateKey = license.usedAt.toISOString().split('T')[0]
-        activationsByDate.set(dateKey, (activationsByDate.get(dateKey) || 0) + 1)
       }
     })
 
@@ -79,37 +69,28 @@ export async function POST(request: NextRequest) {
       count: downloadsByDate.get(date) || 0
     }))
 
-    const activations = dates.map(date => ({
-      date,
-      count: activationsByDate.get(date) || 0
-    }))
-
     // Calculate totals
     const totalDownloads = Array.from(downloadsByDate.values()).reduce((a, b) => a + b, 0)
-    const totalActivations = Array.from(activationsByDate.values()).reduce((a, b) => a + b, 0)
 
     // Calculate trends (compare last half to first half of period)
     const midPoint = Math.floor(downloads.length / 2)
     const firstHalfDownloads = downloads.slice(0, midPoint).reduce((sum, d) => sum + d.count, 0)
     const secondHalfDownloads = downloads.slice(midPoint).reduce((sum, d) => sum + d.count, 0)
-    const firstHalfActivations = activations.slice(0, midPoint).reduce((sum, d) => sum + d.count, 0)
-    const secondHalfActivations = activations.slice(midPoint).reduce((sum, d) => sum + d.count, 0)
 
     const downloadsTrend = firstHalfDownloads > 0 
       ? Math.round(((secondHalfDownloads - firstHalfDownloads) / firstHalfDownloads) * 100)
       : 0
 
-    const activationsTrend = firstHalfActivations > 0
-      ? Math.round(((secondHalfActivations - firstHalfActivations) / firstHalfActivations) * 100)
-      : 0
+    // Calculate weekly average
+    const weeklyAverage = downloads.length >= 7 
+      ? Math.round(downloads.slice(-7).reduce((sum, d) => sum + d.count, 0) / 7)
+      : Math.round(totalDownloads / Math.max(downloads.length, 1))
 
     return NextResponse.json({
       downloads,
-      activations,
       totalDownloads,
-      totalActivations,
       downloadsTrend,
-      activationsTrend,
+      weeklyAverage,
     })
   } catch (error) {
     console.error('Downloads/Activations API error:', error)
