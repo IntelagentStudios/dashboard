@@ -2,20 +2,27 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, MessageSquare, TrendingUp, DollarSign, TrendingDown } from 'lucide-react'
+import { Users, MessageSquare, TrendingUp, DollarSign, TrendingDown, Activity, Clock } from 'lucide-react'
 import { useDashboardStore } from '@/lib/store'
 
-export default function StatsCards() {
+interface StatsCardsProps {
+  isMaster?: boolean
+}
+
+export default function StatsCards({ isMaster = false }: StatsCardsProps) {
   const [stats, setStats] = useState({
     totalLicenses: 0,
     activeConversations: 0,
     monthlyGrowth: 0,
     revenue: 0,
+    responseTime: '1.2s',
+    sessionsToday: 0,
   })
   const [previousStats, setPreviousStats] = useState({
     totalLicenses: 0,
     activeConversations: 0,
     revenue: 0,
+    sessionsToday: 0,
   })
   const { isRealtime } = useDashboardStore()
 
@@ -54,7 +61,8 @@ export default function StatsCards() {
     return Math.round(((current - previous) / previous) * 100)
   }
 
-  const cards = [
+  // Different cards for master vs customer
+  const masterCards = [
     {
       title: 'Total Licenses',
       value: stats.totalLicenses.toLocaleString(),
@@ -85,6 +93,41 @@ export default function StatsCards() {
       color: 'text-orange-500',
     },
   ]
+
+  const customerCards = [
+    {
+      title: 'Active Conversations',
+      value: stats.activeConversations.toLocaleString(),
+      icon: MessageSquare,
+      change: calculateChange(stats.activeConversations, previousStats.activeConversations),
+      color: 'text-green-500',
+    },
+    {
+      title: 'Sessions Today',
+      value: stats.sessionsToday.toLocaleString(),
+      icon: Activity,
+      change: calculateChange(stats.sessionsToday, previousStats.sessionsToday),
+      color: 'text-blue-500',
+    },
+    {
+      title: 'Avg Response Time',
+      value: stats.responseTime,
+      icon: Clock,
+      change: 0,
+      showAsValue: true,
+      color: 'text-purple-500',
+    },
+    {
+      title: 'Monthly Growth',
+      value: `${stats.monthlyGrowth}%`,
+      icon: TrendingUp,
+      change: stats.monthlyGrowth,
+      showAsValue: true,
+      color: 'text-orange-500',
+    },
+  ]
+
+  const cards = isMaster ? masterCards : customerCards
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

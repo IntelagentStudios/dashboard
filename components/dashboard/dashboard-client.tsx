@@ -16,7 +16,9 @@ import {
   RefreshCw,
   Download,
   Package,
-  Activity
+  Activity,
+  Globe,
+  Clock
 } from 'lucide-react'
 import { useDashboardStore } from '@/lib/store'
 import { useToast } from '@/hooks/use-toast'
@@ -161,7 +163,7 @@ export default function DashboardClient() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <StatsCards />
+        <StatsCards isMaster={isMaster} />
 
         {isMaster ? (
           // Master Admin View
@@ -296,25 +298,54 @@ export default function DashboardClient() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
-              <DownloadsActivationsChart />
               <div className="grid gap-4 md:grid-cols-2">
                 <CustomerUsageSummary />
                 <Card>
                   <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
-                    <CardDescription>Common tasks and configurations</CardDescription>
+                    <CardDescription>Common tasks and tools</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      <Button className="w-full justify-start" variant="outline" size="sm">
+                      <Button 
+                        className="w-full justify-start" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          // Download license key
+                          const licenseData = {
+                            licenseKey: authData?.licenseKey,
+                            domain: authData?.domain,
+                            customerName: authData?.customerName,
+                            exportDate: new Date().toISOString()
+                          }
+                          const blob = new Blob([JSON.stringify(licenseData, null, 2)], { type: 'application/json' })
+                          const url = window.URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `license-${authData?.licenseKey}.json`
+                          a.click()
+                          window.URL.revokeObjectURL(url)
+                        }}
+                      >
                         <Download className="h-4 w-4 mr-2" />
                         Download License Key
                       </Button>
-                      <Button className="w-full justify-start" variant="outline" size="sm">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Configure Widget
+                      <Button 
+                        className="w-full justify-start" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleExport}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export Dashboard Data
                       </Button>
-                      <Button className="w-full justify-start" variant="outline" size="sm">
+                      <Button 
+                        className="w-full justify-start" 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => router.push('?tab=conversations')}
+                      >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         View Conversations
                       </Button>
@@ -322,16 +353,35 @@ export default function DashboardClient() {
                   </CardContent>
                 </Card>
               </div>
+              
+              {/* Placeholder widgets section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Custom Widgets</CardTitle>
+                  <CardDescription>Configure your dashboard widgets in settings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
+                        <div className="h-8 w-8 mx-auto mb-2 bg-gray-200 rounded animate-pulse" />
+                        <p className="text-sm text-muted-foreground">Widget Slot {i}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Configure in settings</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="conversations">
               <ChatbotConversations />
             </TabsContent>
 
-            <TabsContent value="settings">
+            <TabsContent value="settings" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>Settings</CardTitle>
+                  <CardTitle>Dashboard Settings</CardTitle>
                   <CardDescription>Configure your dashboard preferences</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -361,6 +411,49 @@ export default function DashboardClient() {
                       <Button variant="outline" size="sm">
                         Configure
                       </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Widget Configuration</CardTitle>
+                  <CardDescription>Choose which widgets to display on your overview page</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Select up to 3 widgets to display on your dashboard overview:
+                    </p>
+                    <div className="grid gap-4">
+                      {[
+                        { id: 'conversations', name: 'Conversations Chart', icon: MessageSquare },
+                        { id: 'usage', name: 'Usage Summary', icon: Activity },
+                        { id: 'performance', name: 'Performance Metrics', icon: TrendingUp },
+                        { id: 'domains', name: 'Domain Activity', icon: Globe },
+                        { id: 'recent', name: 'Recent Sessions', icon: Clock },
+                      ].map(widget => (
+                        <div key={widget.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <widget.icon className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{widget.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Add to dashboard overview
+                              </p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm">
+                            Add Widget
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-4 border-t">
+                      <p className="text-sm text-muted-foreground">
+                        Note: Widget customization will be saved to your account preferences (coming soon)
+                      </p>
                     </div>
                   </div>
                 </CardContent>

@@ -117,6 +117,19 @@ export default function ChatbotConversations({ licenseKey }: { licenseKey?: stri
     )
   }
 
+  // Group conversations by date
+  const groupedByDate = filteredConversations.reduce((groups, conv) => {
+    const date = format(new Date(conv.startTime), 'yyyy-MM-dd')
+    if (!groups[date]) {
+      groups[date] = []
+    }
+    groups[date].push(conv)
+    return groups
+  }, {} as Record<string, Conversation[]>)
+
+  // Sort dates in descending order (most recent first)
+  const sortedDates = Object.keys(groupedByDate).sort((a, b) => b.localeCompare(a))
+
   return (
     <div className="space-y-4">
       <Card>
@@ -125,10 +138,43 @@ export default function ChatbotConversations({ licenseKey }: { licenseKey?: stri
             <div>
               <CardTitle>Conversations</CardTitle>
               <CardDescription>
-                {filteredConversations.length} conversations found
+                {filteredConversations.length} conversation sessions
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => {
+                  // Export all conversations
+                  const exportData = {
+                    exportDate: new Date().toISOString(),
+                    totalConversations: filteredConversations.length,
+                    conversations: filteredConversations.map(conv => ({
+                      sessionId: conv.sessionId,
+                      domain: conv.domain,
+                      startTime: conv.startTime,
+                      messageCount: conv.messages.length,
+                      messages: conv.messages.map(msg => ({
+                        role: msg.role,
+                        content: msg.content,
+                        timestamp: msg.timestamp,
+                        intent: msg.intentDetected
+                      }))
+                    }))
+                  }
+                  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+                  const url = window.URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `conversations-export-${Date.now()}.json`
+                  a.click()
+                  window.URL.revokeObjectURL(url)
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export All
+              </Button>
               <Button size="sm" variant="outline" onClick={fetchConversations}>
                 Refresh
               </Button>
@@ -162,19 +208,39 @@ export default function ChatbotConversations({ licenseKey }: { licenseKey?: stri
             )}
           </div>
 
-          <Tabs defaultValue="timeline" className="w-full">
+          <Tabs defaultValue="sessions" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="timeline">Timeline View</TabsTrigger>
-              <TabsTrigger value="grouped">Grouped by Domain</TabsTrigger>
+              <TabsTrigger value="sessions">Sessions by Date</TabsTrigger>
+              <TabsTrigger value="domains">Grouped by Domain</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="timeline" className="space-y-4">
-              {filteredConversations.length === 0 ? (
+            <TabsContent value="sessions" className="space-y-4">
+              {sortedDates.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   No conversations found
                 </div>
               ) : (
-                filteredConversations.map((conversation) => (
+                sortedDates.map(date => {
+                  const dateConversations = groupedByDate[date]
+                  const formattedDate = format(new Date(date), 'EEEE, MMMM d, yyyy')
+                  const isToday = date === format(new Date(), 'yyyy-MM-dd')
+                  const isYesterday = date === format(new Date(Date.now() - 86400000), 'yyyy-MM-dd')
+                  
+                  return (
+                    <div key={date} className="space-y-2">
+                      <div className="flex items-center gap-2 py-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="font-medium text-sm text-muted-foreground">
+                          {isToday ? 'Today' : isYesterday ? 'Yesterday' : formattedDate}
+                        </h3>
+                        <Badge variant="secondary" className="ml-auto">
+                          {dateConversations.length} sessions
+                        </Badge>
+                      </div>
+                      
+                      {dateConversations
+                        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                        .map((conversation) => (
                   <Card key={conversation.sessionId} className="overflow-hidden">
                     <CardHeader 
                       className="cursor-pointer hover:bg-accent/50"
@@ -269,11 +335,14 @@ export default function ChatbotConversations({ licenseKey }: { licenseKey?: stri
                       </CardContent>
                     )}
                   </Card>
-                ))
+                ))}
+                    </div>
+                  )
+                })
               )}
             </TabsContent>
 
-            <TabsContent value="grouped" className="space-y-4">
+            <TabsContent value="domains" className="space-y-4">
               {uniqueDomains.map(domain => {
                 const domainConversations = filteredConversations.filter(c => c.domain === domain)
                 
