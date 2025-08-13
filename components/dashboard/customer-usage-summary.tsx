@@ -58,19 +58,19 @@ export default function CustomerUsageSummary() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span>Total Conversations</span>
-              <span className="font-mono text-lg">{summary.totalConversations.toLocaleString()}</span>
+              <span className="font-mono text-lg">{(summary.totalConversations || 0).toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Active Users</span>
-              <span className="font-mono text-lg">{summary.activeUsers.toLocaleString()}</span>
+              <span className="font-mono text-lg">{(summary.activeUsers || 0).toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Response Rate</span>
-              <span className="font-mono text-lg">{summary.responseRate}%</span>
+              <span className="font-mono text-lg">{summary.responseRate || 0}%</span>
             </div>
             <div className="flex items-center justify-between">
               <span>Avg Response Time</span>
-              <span className="font-mono text-lg">{summary.averageResponseTime}</span>
+              <span className="font-mono text-lg">{summary.averageResponseTime || 'N/A'}</span>
             </div>
           </div>
         )}

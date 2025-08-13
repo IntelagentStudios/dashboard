@@ -110,7 +110,7 @@ export default function ChatbotSessionsTable({
               <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.summary.totalSessions}</div>
+              <div className="text-2xl font-bold">{data.summary?.totalSessions || 0}</div>
               <p className="text-xs text-muted-foreground">All time</p>
             </CardContent>
           </Card>
@@ -119,7 +119,7 @@ export default function ChatbotSessionsTable({
               <CardTitle className="text-sm font-medium">Active Domains</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.summary.activeDomains}</div>
+              <div className="text-2xl font-bold">{data.summary?.activeDomains || 0}</div>
               <p className="text-xs text-muted-foreground">Last 24 hours</p>
             </CardContent>
           </Card>
@@ -128,7 +128,7 @@ export default function ChatbotSessionsTable({
               <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.summary.totalMessages}</div>
+              <div className="text-2xl font-bold">{data.summary?.totalMessages || 0}</div>
               <p className="text-xs text-muted-foreground">Last 24 hours</p>
             </CardContent>
           </Card>

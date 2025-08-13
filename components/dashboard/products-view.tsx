@@ -95,7 +95,7 @@ export default function ProductsView() {
               <CardTitle className="text-sm font-medium">Total Licenses</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{product.licenses}</div>
+              <div className="text-2xl font-bold">{product.licenses || 0}</div>
               <p className="text-xs text-muted-foreground">Active licenses</p>
             </CardContent>
           </Card>
@@ -104,7 +104,7 @@ export default function ProductsView() {
               <CardTitle className="text-sm font-medium">Active Users</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{product.activeUsers.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{(product.activeUsers || 0).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">Last 30 days</p>
             </CardContent>
           </Card>
@@ -113,8 +113,8 @@ export default function ProductsView() {
               <CardTitle className="text-sm font-medium">Growth</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${product.growth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {product.growth > 0 ? '+' : ''}{product.growth}%
+              <div className={`text-2xl font-bold ${(product.growth || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {(product.growth || 0) > 0 ? '+' : ''}{product.growth || 0}%
               </div>
               <p className="text-xs text-muted-foreground">Month over month</p>
             </CardContent>
@@ -265,16 +265,16 @@ export default function ProductsView() {
             <CardContent>
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div className="text-xl font-bold">{product.licenses}</div>
+                  <div className="text-xl font-bold">{product.licenses || 0}</div>
                   <div className="text-xs text-muted-foreground">Licenses</div>
                 </div>
                 <div>
-                  <div className="text-xl font-bold">{product.activeUsers}</div>
+                  <div className="text-xl font-bold">{product.activeUsers || 0}</div>
                   <div className="text-xs text-muted-foreground">Users</div>
                 </div>
                 <div>
-                  <div className={`text-xl font-bold ${product.growth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {product.growth > 0 ? '+' : ''}{product.growth}%
+                  <div className={`text-xl font-bold ${(product.growth || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {(product.growth || 0) > 0 ? '+' : ''}{product.growth || 0}%
                   </div>
                   <div className="text-xs text-muted-foreground">Growth</div>
                 </div>
