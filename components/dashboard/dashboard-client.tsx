@@ -35,6 +35,7 @@ import ProductsView from './products-view'
 export default function DashboardClient() {
   const [authData, setAuthData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [recentActivity, setRecentActivity] = useState<any[]>([])
   const router = useRouter()
   const { toast } = useToast()
   const { isRealtime, setRealtime } = useDashboardStore()
@@ -42,6 +43,12 @@ export default function DashboardClient() {
   useEffect(() => {
     fetchAuthData()
   }, [])
+
+  useEffect(() => {
+    if (authData?.isMaster) {
+      fetchRecentActivity()
+    }
+  }, [authData])
 
   const fetchAuthData = async () => {
     try {
@@ -54,6 +61,18 @@ export default function DashboardClient() {
       console.error('Failed to fetch auth data:', error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchRecentActivity = async () => {
+    try {
+      const response = await fetch('/api/dashboard/recent-activity')
+      if (response.ok) {
+        const data = await response.json()
+        setRecentActivity(data.activities || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error)
     }
   }
 
@@ -198,34 +217,33 @@ export default function DashboardClient() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-green-500" />
-                          <span>New license activated</span>
-                        </div>
-                        <span className="text-muted-foreground">2m ago</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-blue-500" />
-                          <span>License downloaded</span>
-                        </div>
-                        <span className="text-muted-foreground">15m ago</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                          <span>License renewed</span>
-                        </div>
-                        <span className="text-muted-foreground">1h ago</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 w-2 rounded-full bg-red-500" />
-                          <span>License expired</span>
-                        </div>
-                        <span className="text-muted-foreground">3h ago</span>
-                      </div>
+                      {recentActivity.length > 0 ? (
+                        recentActivity.map((activity, index) => {
+                          const colors: Record<string, string> = {
+                            'license_created': 'bg-blue-500',
+                            'license_activated': 'bg-green-500',
+                            'license_expired': 'bg-red-500',
+                            'new_session': 'bg-purple-500',
+                            'info': 'bg-blue-500',
+                            'success': 'bg-green-500',
+                            'warning': 'bg-yellow-500',
+                            'activity': 'bg-purple-500'
+                          }
+                          const color = colors[activity.type] || colors[activity.status] || 'bg-gray-500'
+                          
+                          return (
+                            <div key={index} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-2">
+                                <div className={`h-2 w-2 rounded-full ${color}`} />
+                                <span>{activity.description}</span>
+                              </div>
+                              <span className="text-muted-foreground">{activity.timeAgo}</span>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No recent activity</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -353,25 +371,6 @@ export default function DashboardClient() {
                   </CardContent>
                 </Card>
               </div>
-              
-              {/* Placeholder widgets section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Custom Widgets</CardTitle>
-                  <CardDescription>Configure your dashboard widgets in settings</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
-                        <div className="h-8 w-8 mx-auto mb-2 bg-gray-200 rounded animate-pulse" />
-                        <p className="text-sm text-muted-foreground">Widget Slot {i}</p>
-                        <p className="text-xs text-muted-foreground mt-1">Configure in settings</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="conversations">

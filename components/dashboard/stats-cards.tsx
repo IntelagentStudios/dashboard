@@ -15,7 +15,7 @@ export default function StatsCards({ isMaster = false }: StatsCardsProps) {
     activeConversations: 0,
     monthlyGrowth: 0,
     revenue: 0,
-    responseTime: '1.2s',
+    responseTime: null as string | null,
     sessionsToday: 0,
   })
   const [previousStats, setPreviousStats] = useState({
@@ -111,7 +111,7 @@ export default function StatsCards({ isMaster = false }: StatsCardsProps) {
     },
     {
       title: 'Avg Response Time',
-      value: stats.responseTime || 'N/A',
+      value: stats.responseTime || 'Calculating...',
       icon: Clock,
       change: 0,
       showAsValue: true,
