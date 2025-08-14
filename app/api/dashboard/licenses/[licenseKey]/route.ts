@@ -26,7 +26,21 @@ export async function GET(
 
     const license = await prisma.license.findUnique({
       where: { licenseKey: params.licenseKey },
-      include: {
+      select: {
+        licenseKey: true,
+        email: true,
+        customerName: true,
+        domain: true,
+        status: true,
+        createdAt: true,
+        usedAt: true,
+        lastIndexed: true,
+        plan: true,
+        productType: true,
+        subscriptionStatus: true,
+        lastPaymentDate: true,
+        nextBillingDate: true,
+        subscriptionId: true,
         _count: {
           select: {
             chatbotLogs: true
@@ -42,13 +56,8 @@ export async function GET(
       )
     }
 
-    // Get the actual domain from site_keys if available
+    // Use the domain directly from the license
     let actualDomain = license.domain
-    if (license.siteKey) {
-      // You might need to query site_keys table or extract domain from siteKey
-      // For now, we'll use the domain field
-      actualDomain = license.domain
-    }
 
     return NextResponse.json({
       licenseKey: license.licenseKey,

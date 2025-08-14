@@ -21,7 +21,6 @@ export async function GET() {
         licenseKey: true,
         status: true,
         createdAt: true,
-        updatedAt: true,
         domain: true,
         customerName: true,
         usedAt: true,
@@ -56,7 +55,7 @@ export async function GET() {
         })
       }
 
-      if (license.usedAt && license.usedAt > license.createdAt) {
+      if (license.usedAt && license.createdAt && license.usedAt > license.createdAt) {
         activities.push({
           type: 'license_activated',
           description: `Licence activated by ${license.customerName || license.domain || 'Unknown'}`,
@@ -65,11 +64,11 @@ export async function GET() {
         })
       }
 
-      if (license.status === 'expired') {
+      if (license.status === 'expired' && license.createdAt) {
         activities.push({
           type: 'license_expired',
           description: `Licence expired for ${license.customerName || license.domain || 'Unknown'}`,
-          timestamp: license.updatedAt,
+          timestamp: license.createdAt,
           status: 'warning'
         })
       }

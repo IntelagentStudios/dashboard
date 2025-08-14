@@ -82,8 +82,7 @@ export async function GET(request: NextRequest) {
           role: true,
           content: true,
           timestamp: true,
-          conversationId: true,
-          intentDetected: true
+          conversationId: true
         }
       })
 
@@ -108,8 +107,7 @@ export async function GET(request: NextRequest) {
           id: log.id,
           role: log.role || (log.customerMessage ? 'user' : 'assistant'),
           content: log.content || log.customerMessage || log.chatbotResponse,
-          timestamp: log.timestamp,
-          intentDetected: log.intentDetected
+          timestamp: log.timestamp
         })
         
         if (log.timestamp && session.lastActivity && log.timestamp > session.lastActivity) {
@@ -175,8 +173,7 @@ export async function GET(request: NextRequest) {
         where: { licenseKey: { in: uniqueLicenseKeys } },
         select: {
           licenseKey: true,
-          domain: true,
-          siteKey: true
+          domain: true
         }
       })
 

@@ -6,7 +6,12 @@
       "Bash(npx prisma:*)",
       "Bash(npx shadcn@latest init:*)",
       "Bash(npx shadcn@latest add:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(rm:*)",
+      "Bash(cmd /c \"rmdir /s /q .next\")",
+      "Bash(powershell:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
