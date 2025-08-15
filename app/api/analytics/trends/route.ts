@@ -96,10 +96,12 @@ export async function POST(request: NextRequest) {
       sessionsByDate.get(dateKey)!.add(log.sessionId!)
 
       // Track unique licenses per date
-      if (!licensesByDate.has(dateKey)) {
-        licensesByDate.set(dateKey, new Set())
+      if (log.licenseKey) {
+        if (!licensesByDate.has(dateKey)) {
+          licensesByDate.set(dateKey, new Set())
+        }
+        licensesByDate.get(dateKey)!.add(log.licenseKey)
       }
-      licensesByDate.get(dateKey)!.add(log.licenseKey)
     })
 
     // Generate complete date range

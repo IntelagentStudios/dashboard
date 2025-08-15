@@ -117,11 +117,14 @@ export async function GET(request: NextRequest) {
     })
 
     for (const session of recentSessions) {
-      // Get customer name for the session
-      const license = await prisma.license.findUnique({
-        where: { licenseKey: session.licenseKey },
-        select: { customerName: true, domain: true }
-      })
+      // Get customer name for the session if we have a license key
+      let license = null
+      if (session.licenseKey) {
+        license = await prisma.license.findUnique({
+          where: { licenseKey: session.licenseKey },
+          select: { customerName: true, domain: true }
+        })
+      }
 
       activities.push({
         type: 'new_conversation',

@@ -168,19 +168,19 @@ export async function GET(request: NextRequest) {
       })
 
       // Get actual domains from licenses
-      const uniqueLicenseKeys = Array.from(new Set(sessionDetails.map(s => s.licenseKey)))
-      const licenses = await prisma.license.findMany({
+      const uniqueLicenseKeys = Array.from(new Set(sessionDetails.map(s => s.licenseKey).filter(Boolean))) as string[]
+      const licenses = uniqueLicenseKeys.length > 0 ? await prisma.license.findMany({
         where: { licenseKey: { in: uniqueLicenseKeys } },
         select: {
           licenseKey: true,
           domain: true
         }
-      })
+      }) : []
 
       const licenseMap = new Map(licenses.map(l => [l.licenseKey, l]))
 
       const formattedSessions = sessionDetails.map(session => {
-        const license = licenseMap.get(session.licenseKey)
+        const license = session.licenseKey ? licenseMap.get(session.licenseKey) : null
         const actualDomain = session.domain || license?.domain || 'Not configured'
         
         const startTime = session._min.timestamp

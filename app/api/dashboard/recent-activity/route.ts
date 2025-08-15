@@ -77,10 +77,13 @@ export async function GET() {
     // Add session activities
     for (const session of recentSessions) {
       if (session._max.timestamp) {
-        const license = await prisma.license.findUnique({
-          where: { licenseKey: session.licenseKey },
-          select: { domain: true, customerName: true }
-        })
+        let license = null
+        if (session.licenseKey) {
+          license = await prisma.license.findUnique({
+            where: { licenseKey: session.licenseKey },
+            select: { domain: true, customerName: true }
+          })
+        }
 
         activities.push({
           type: 'new_session',

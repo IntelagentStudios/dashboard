@@ -46,14 +46,14 @@ model ChatbotLog {
   timestamp         DateTime? @db.Timestamp(6)
   intentDetected    String?   @map("intent_detected") @db.VarChar(255)
   conversationId    String?   @map("conversation_id") @db.VarChar(255)
-  licenseKey        String    @map("license_key") @db.VarChar(20)
+  licenseKey        String?   @map("license_key") @db.VarChar(20)
   domain            String?   @db.VarChar(255)
   userId            String?   @map("user_id") @db.VarChar(255)
   role              String?   @db.VarChar(50)
   content           String?   @db.Text
   createdAt         DateTime? @map("created_at") @db.Timestamp(6)
   
-  license           License   @relation(fields: [licenseKey], references: [licenseKey])
+  license           License?  @relation(fields: [licenseKey], references: [licenseKey])
   
   @@map("chatbot_logs")
   @@schema("public")

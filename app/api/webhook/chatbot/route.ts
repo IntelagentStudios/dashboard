@@ -6,47 +6,40 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
     
-    // Validate required fields
-    const requiredFields = ['session_id', 'license_key']
-    for (const field of requiredFields) {
-      if (!data[field]) {
-        return NextResponse.json(
-          { error: `Missing required field: ${field}` },
-          { status: 400 }
-        )
-      }
-    }
-
-    // Validate license key exists and is active
-    const license = await prisma.license.findUnique({
-      where: { licenseKey: data.license_key },
-      select: {
-        licenseKey: true,
-        status: true,
-        domain: true,
-        customerName: true
-      }
-    })
-
-    if (!license) {
+    // Validate required fields (only session_id is truly required now)
+    if (!data.session_id) {
       return NextResponse.json(
-        { error: 'Invalid license key' },
-        { status: 401 }
+        { error: 'Missing required field: session_id' },
+        { status: 400 }
       )
     }
 
-    if (license.status !== 'active' && license.status !== 'trial') {
-      return NextResponse.json(
-        { error: 'License is not active' },
-        { status: 403 }
-      )
+    // If license_key is provided, validate it
+    let license = null
+    if (data.license_key) {
+      license = await prisma.license.findUnique({
+        where: { licenseKey: data.license_key },
+        select: {
+          licenseKey: true,
+          status: true,
+          domain: true,
+          customerName: true
+        }
+      })
+
+      // Log warning if license not found but don't reject the webhook
+      if (!license) {
+        console.warn(`Invalid license key received: ${data.license_key}`)
+      } else if (license.status !== 'active' && license.status !== 'trial') {
+        console.warn(`Inactive license used: ${data.license_key} (status: ${license.status})`)
+      }
     }
 
     // Prepare the chatbot log entry
     const chatbotLogData = {
       sessionId: data.session_id,
-      domain: data.domain || license.domain || 'Unknown',
-      licenseKey: data.license_key,
+      domain: data.domain || license?.domain || null,
+      licenseKey: data.license_key || null,
       userId: data.user_id || null,
       conversationId: data.conversation_id || data.session_id,
       timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
@@ -64,25 +57,27 @@ export async function POST(request: NextRequest) {
       data: chatbotLogData
     })
 
-    // Update license last activity if this is a new session or recent activity
-    const lastHour = new Date(Date.now() - 60 * 60 * 1000)
-    const recentActivity = await prisma.chatbotLog.findFirst({
-      where: {
-        licenseKey: data.license_key,
-        sessionId: data.session_id,
-        timestamp: { gte: lastHour }
-      },
-      orderBy: { timestamp: 'desc' }
-    })
-
-    if (!recentActivity || recentActivity.id === log.id) {
-      // This is either the first message or a new session
-      await prisma.license.update({
-        where: { licenseKey: data.license_key },
-        data: {
-          usedAt: new Date()
-        }
+    // Update license last activity if we have a valid license key
+    if (data.license_key && license) {
+      const lastHour = new Date(Date.now() - 60 * 60 * 1000)
+      const recentActivity = await prisma.chatbotLog.findFirst({
+        where: {
+          licenseKey: data.license_key,
+          sessionId: data.session_id,
+          timestamp: { gte: lastHour }
+        },
+        orderBy: { timestamp: 'desc' }
       })
+
+      if (!recentActivity || recentActivity.id === log.id) {
+        // This is either the first message or a new session
+        await prisma.license.update({
+          where: { licenseKey: data.license_key },
+          data: {
+            usedAt: new Date()
+          }
+        })
+      }
     }
 
     // Calculate session statistics for response
@@ -90,7 +85,7 @@ export async function POST(request: NextRequest) {
       by: ['sessionId'],
       where: {
         sessionId: data.session_id,
-        licenseKey: data.license_key
+        ...(data.license_key ? { licenseKey: data.license_key } : {})
       },
       _count: { id: true },
       _min: { timestamp: true },
