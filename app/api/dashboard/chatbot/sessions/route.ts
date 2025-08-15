@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
         select: { siteKey: true }
       })
       userSiteKey = userLicense?.siteKey || null
+      
+      // If user has no siteKey, return empty results
+      if (!userSiteKey) {
+        return NextResponse.json({ sessions: [] })
+      }
     }
 
     // Build where clause
@@ -34,7 +39,8 @@ export async function GET(request: NextRequest) {
     }
     
     // Filter by site_key for non-master users
-    if (!auth.isMaster && userSiteKey) {
+    if (!auth.isMaster) {
+      // We already checked userSiteKey exists above
       whereClause.siteKey = userSiteKey
     }
 
