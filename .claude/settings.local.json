@@ -11,7 +11,10 @@
       "Bash(rm:*)",
       "Bash(cmd /c \"rmdir /s /q .next\")",
       "Bash(powershell:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
