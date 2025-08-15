@@ -34,8 +34,8 @@ export async function GET() {
     }
 
     // Get unique domains and licenses
-    const uniqueDomains = [...new Set(recentLogs.map(log => log.domain).filter(Boolean))]
-    const uniqueLicenses = [...new Set(recentLogs.map(log => log.licenseKey).filter(Boolean))]
+    const uniqueDomains = Array.from(new Set(recentLogs.map(log => log.domain).filter(Boolean)))
+    const uniqueLicenses = Array.from(new Set(recentLogs.map(log => log.licenseKey).filter(Boolean)))
 
     // Format logs for easier reading
     const formattedLogs = recentLogs.map(log => ({
