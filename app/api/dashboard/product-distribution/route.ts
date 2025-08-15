@@ -13,28 +13,37 @@ export async function GET() {
       )
     }
 
-    // Get license counts by product type
-    const licensesByProduct = await prisma.license.groupBy({
-      by: ['productType'],
+    // Get all active licenses with their products
+    const licenses = await prisma.license.findMany({
       where: auth.isMaster ? { status: 'active' } : { 
         licenseKey: auth.licenseKey,
         status: 'active'
       },
-      _count: {
-        licenseKey: true
+      select: {
+        licenseKey: true,
+        products: true
       }
     })
 
-    // Calculate total for percentages
-    const total = licensesByProduct.reduce((sum, item) => sum + item._count.licenseKey, 0)
+    // Count each product across all licenses
+    const productCounts = new Map<string, number>()
+    let totalProducts = 0
+
+    licenses.forEach(license => {
+      if (license.products && license.products.length > 0) {
+        license.products.forEach(product => {
+          productCounts.set(product, (productCounts.get(product) || 0) + 1)
+          totalProducts++
+        })
+      }
+    })
 
     // Format distribution data
-    const distribution = licensesByProduct
-      .filter(item => item.productType) // Filter out null product types
-      .map(item => ({
-        productType: item.productType!,
-        count: item._count.licenseKey,
-        percentage: total > 0 ? Math.round((item._count.licenseKey / total) * 100) : 0
+    const distribution = Array.from(productCounts.entries())
+      .map(([product, count]) => ({
+        productType: product,
+        count: count,
+        percentage: totalProducts > 0 ? Math.round((count / licenses.length) * 100) : 0
       }))
       .sort((a, b) => b.count - a.count) // Sort by count descending
 

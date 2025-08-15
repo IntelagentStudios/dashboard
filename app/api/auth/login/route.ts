@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         isMaster: false,
         customerName: license.customerName,
         email: license.email,
-        productType: license.productType,
+        products: license.products,
       })
 
       response.cookies.set('auth-token', token, {

@@ -21,7 +21,7 @@ model License {
   createdAt          DateTime? @map("created_at")
   usedAt             DateTime? @map("used_at")
   domain             String?   @db.VarChar(255)
-  siteKey            String?   @map("site_key") @db.VarChar(255)
+  siteKey            String?   @unique @map("site_key") @db.VarChar(255)
   status             String?   @db.VarChar(20)
   subscriptionId     String?   @map("subscription_id") @db.VarChar(255)
   lastPaymentDate    DateTime? @map("last_payment_date")
@@ -30,7 +30,7 @@ model License {
   customerName       String?   @map("customer_name") @db.VarChar(255)
   lastIndexed        DateTime? @map("last_indexed")
   plan               String?   @db.VarChar(50)
-  productType        String?   @default("chatbot") @map("product_type") @db.VarChar(50)
+  products           String[]  @default([]) @db.Text
   
   chatbotLogs        ChatbotLog[]
   
@@ -46,14 +46,14 @@ model ChatbotLog {
   timestamp         DateTime? @db.Timestamp(6)
   intentDetected    String?   @map("intent_detected") @db.VarChar(255)
   conversationId    String?   @map("conversation_id") @db.VarChar(255)
-  licenseKey        String?   @map("license_key") @db.VarChar(20)
+  siteKey           String?   @map("site_key") @db.VarChar(255)
   domain            String?   @db.VarChar(255)
   userId            String?   @map("user_id") @db.VarChar(255)
   role              String?   @db.VarChar(50)
   content           String?   @db.Text
   createdAt         DateTime? @map("created_at") @db.Timestamp(6)
   
-  license           License?  @relation(fields: [licenseKey], references: [licenseKey])
+  license           License?  @relation(fields: [siteKey], references: [siteKey])
   
   @@map("chatbot_logs")
   @@schema("public")
@@ -79,5 +79,33 @@ model DomainLicense {
   
   @@id([domain, licenseKey])
   @@map("domain_licenses")
+  @@schema("public")
+}
+
+model SmartDashboardInsight {
+  id            Int       @id @default(autoincrement())
+  licenseKey    String    @map("license_key") @db.VarChar(20)
+  insightType   String    @map("insight_type") @db.VarChar(50)
+  title         String    @db.VarChar(255)
+  content       String    @db.Text
+  severity      String?   @db.VarChar(20)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  expiresAt     DateTime? @map("expires_at")
+  metadata      Json?
+  
+  @@map("smart_dashboard_insights")
+  @@schema("public")
+}
+
+model SmartDashboardRequest {
+  id            Int       @id @default(autoincrement())
+  licenseKey    String    @map("license_key") @db.VarChar(20)
+  requestType   String    @map("request_type") @db.VarChar(50)
+  query         String    @db.Text
+  response      String?   @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  processedAt   DateTime? @map("processed_at")
+  
+  @@map("smart_dashboard_requests")
   @@schema("public")
 }

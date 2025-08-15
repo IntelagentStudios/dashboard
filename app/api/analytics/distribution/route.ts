@@ -21,17 +21,29 @@ export async function GET() {
       )
     }
 
-    // Get all licenses grouped by product type
-    const productDistribution = await prisma.license.groupBy({
-      by: ['productType'],
+    // Get all active/trial licenses with products
+    const licenses = await prisma.license.findMany({
       where: {
         OR: [
           { status: 'active' },
           { status: 'trial' }
         ]
       },
-      _count: {
-        licenseKey: true
+      select: {
+        licenseKey: true,
+        products: true,
+        plan: true,
+        status: true
+      }
+    })
+
+    // Count products across all licenses
+    const productCounts = new Map<string, number>()
+    licenses.forEach(license => {
+      if (license.products && license.products.length > 0) {
+        license.products.forEach(product => {
+          productCounts.set(product, (productCounts.get(product) || 0) + 1)
+        })
       }
     })
 
@@ -58,20 +70,18 @@ export async function GET() {
     })
 
     // Calculate total for percentages
-    const totalLicenses = productDistribution.reduce((sum, item) => sum + item._count.licenseKey, 0)
+    const totalLicenses = licenses.length
 
     // Format product distribution data
-    const products = productDistribution.map(item => {
-      const productName = item.productType || 'Unknown'
-      const count = item._count.licenseKey
+    const products = Array.from(productCounts.entries()).map(([productName, count]) => {
       const percentage = totalLicenses > 0 ? Math.round((count / totalLicenses) * 100) : 0
 
       // Map product types to display names and colors
       const productInfo: Record<string, { name: string; color: string }> = {
         'chatbot': { name: 'Chatbot', color: 'hsl(var(--chart-1))' },
-        'setup-agent': { name: 'Setup Agent', color: 'hsl(var(--chart-2))' },
-        'email-assistant': { name: 'Email Assistant', color: 'hsl(var(--chart-3))' },
-        'voice-assistant': { name: 'Voice Assistant', color: 'hsl(var(--chart-4))' },
+        'setup_agent': { name: 'Setup Agent', color: 'hsl(var(--chart-2))' },
+        'email_assistant': { name: 'Email Assistant', color: 'hsl(var(--chart-3))' },
+        'voice_assistant': { name: 'Voice Assistant', color: 'hsl(var(--chart-4))' },
         'analytics': { name: 'Analytics', color: 'hsl(var(--chart-5))' }
       }
 
@@ -85,7 +95,7 @@ export async function GET() {
         value: count,
         percentage,
         color: info.color,
-        productType: item.productType
+        productType: productName
       }
     }).sort((a, b) => b.value - a.value)
 
@@ -115,43 +125,55 @@ export async function GET() {
 
     // Get usage statistics for each product
     const productUsage = await Promise.all(
-      productDistribution.map(async (product) => {
-        const licenses = await prisma.license.findMany({
-          where: {
-            productType: product.productType,
-            OR: [
-              { status: 'active' },
-              { status: 'trial' }
-            ]
+      Array.from(productCounts.keys()).map(async (product) => {
+        // Find licenses that have this product
+        const licensesWithProduct = licenses
+          .filter(l => l.products && l.products.includes(product))
+          .map(l => l.licenseKey)
+
+        if (licensesWithProduct.length === 0) {
+          return {
+            productType: product,
+            licenses: 0,
+            conversations: 0,
+            activeDomains: 0
+          }
+        }
+
+        // Get site keys for these licenses
+        const licensesWithSiteKey = await prisma.license.findMany({
+          where: { 
+            licenseKey: { in: licensesWithProduct },
+            siteKey: { not: null }
           },
-          select: { licenseKey: true }
+          select: { siteKey: true }
         })
 
-        const licenseKeys = licenses.map(l => l.licenseKey)
+        const siteKeys = licensesWithSiteKey.map(l => l.siteKey).filter(Boolean) as string[]
 
-        // Get conversation count for these licenses
-        const conversations = await prisma.chatbotLog.groupBy({
+        // Get conversation count for these site keys
+        const conversations = siteKeys.length > 0 ? await prisma.chatbotLog.groupBy({
           by: ['sessionId'],
           where: {
-            licenseKey: { in: licenseKeys }
+            siteKey: { in: siteKeys }
           }
-        })
+        }) : []
 
         // Get active domains
-        const domains = await prisma.chatbotLog.groupBy({
+        const domains = siteKeys.length > 0 ? await prisma.chatbotLog.groupBy({
           by: ['domain'],
           where: {
-            licenseKey: { in: licenseKeys },
+            siteKey: { in: siteKeys },
             domain: { not: null },
             timestamp: {
               gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
             }
           }
-        })
+        }) : []
 
         return {
-          productType: product.productType,
-          licenses: product._count.licenseKey,
+          productType: product,
+          licenses: licensesWithProduct.length,
           conversations: conversations.length,
           activeDomains: domains.length
         }

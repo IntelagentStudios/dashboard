@@ -18,11 +18,24 @@ export async function GET(request: NextRequest) {
     const domain = searchParams.get('domain')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    let whereClause: any = {}
-    
-    // Filter by license for non-master users
+    // For non-master users, get their site_key first
+    let userSiteKey: string | null = null
     if (!auth.isMaster) {
-      whereClause.licenseKey = auth.licenseKey
+      const userLicense = await prisma.license.findUnique({
+        where: { licenseKey: auth.licenseKey },
+        select: { siteKey: true }
+      })
+      userSiteKey = userLicense?.siteKey || null
+    }
+
+    // Build where clause
+    let whereClause: any = {
+      sessionId: { not: null }
+    }
+    
+    // Filter by site_key for non-master users
+    if (!auth.isMaster && userSiteKey) {
+      whereClause.siteKey = userSiteKey
     }
 
     // Filter by domain if specified
@@ -30,44 +43,59 @@ export async function GET(request: NextRequest) {
       whereClause.domain = domain
     }
 
-    // Filter out null sessions
-    whereClause.sessionId = { not: null }
-
     if (view === 'by-domain') {
-      // Get sessions grouped by domain
-      const domainSessions = await prisma.chatbotLog.groupBy({
-        by: ['domain', 'sessionId'],
+      // Get sessions grouped by domain with license info
+      const domainSessions = await prisma.chatbotLog.findMany({
         where: whereClause,
-        _count: {
-          id: true
-        },
-        _max: {
-          timestamp: true
-        },
-        _min: {
-          timestamp: true
-        },
-        orderBy: {
-          _max: {
-            timestamp: 'desc'
+        select: {
+          sessionId: true,
+          domain: true,
+          siteKey: true,
+          timestamp: true,
+          license: {
+            select: {
+              domain: true,
+              customerName: true,
+              licenseKey: true
+            }
           }
         },
-        take: limit
+        orderBy: { timestamp: 'desc' },
+        take: limit * 5 // Get more to group properly
       })
 
-      // Format the data
-      const formattedSessions = domainSessions.map(session => ({
-        domain: session.domain || 'Unknown',
-        sessionId: session.sessionId,
-        messageCount: session._count.id,
-        startTime: session._min.timestamp,
-        lastActivity: session._max.timestamp
-      }))
+      // Group by session
+      const sessionMap = new Map()
+      domainSessions.forEach(log => {
+        if (!sessionMap.has(log.sessionId)) {
+          sessionMap.set(log.sessionId, {
+            sessionId: log.sessionId,
+            domain: log.domain || log.license?.domain || 'Unknown',
+            customerName: log.license?.customerName,
+            licenseKey: log.license?.licenseKey,
+            messageCount: 0,
+            startTime: log.timestamp,
+            lastActivity: log.timestamp
+          })
+        }
+        const session = sessionMap.get(log.sessionId)
+        session.messageCount++
+        if (log.timestamp && session.startTime && log.timestamp < session.startTime) {
+          session.startTime = log.timestamp
+        }
+        if (log.timestamp && session.lastActivity && log.timestamp > session.lastActivity) {
+          session.lastActivity = log.timestamp
+        }
+      })
+
+      const formattedSessions = Array.from(sessionMap.values())
+        .slice(0, limit)
+        .sort((a, b) => (b.lastActivity?.getTime() || 0) - (a.lastActivity?.getTime() || 0))
 
       return NextResponse.json({ sessions: formattedSessions })
       
     } else if (view === 'recent') {
-      // Get recent conversations with details
+      // Get recent conversations with full details
       const recentLogs = await prisma.chatbotLog.findMany({
         where: whereClause,
         orderBy: { timestamp: 'desc' },
@@ -82,7 +110,15 @@ export async function GET(request: NextRequest) {
           role: true,
           content: true,
           timestamp: true,
-          conversationId: true
+          conversationId: true,
+          siteKey: true,
+          license: {
+            select: {
+              domain: true,
+              customerName: true,
+              licenseKey: true
+            }
+          }
         }
       })
 
@@ -93,7 +129,9 @@ export async function GET(request: NextRequest) {
         if (!sessionMap.has(log.sessionId)) {
           sessionMap.set(log.sessionId, {
             sessionId: log.sessionId,
-            domain: log.domain,
+            domain: log.domain || log.license?.domain || 'Unknown',
+            customerName: log.license?.customerName,
+            licenseKey: auth.isMaster ? log.license?.licenseKey : undefined,
             conversationId: log.conversationId,
             messages: [],
             startTime: log.timestamp,
@@ -146,64 +184,69 @@ export async function GET(request: NextRequest) {
         _count: true
       })
 
-      // Get session details with domain info
-      const sessionDetails = await prisma.chatbotLog.groupBy({
-        by: ['sessionId', 'domain', 'licenseKey'],
+      // Get session details with license info
+      const sessionDetails = await prisma.chatbotLog.findMany({
         where: whereClause,
-        _count: {
-          id: true
-        },
-        _max: {
-          timestamp: true
-        },
-        _min: {
-          timestamp: true
-        },
-        orderBy: {
-          _max: {
-            timestamp: 'desc'
-          }
-        },
-        take: limit
-      })
-
-      // Get actual domains from licenses
-      const uniqueLicenseKeys = Array.from(new Set(sessionDetails.map(s => s.licenseKey).filter(Boolean))) as string[]
-      const licenses = uniqueLicenseKeys.length > 0 ? await prisma.license.findMany({
-        where: { licenseKey: { in: uniqueLicenseKeys } },
         select: {
-          licenseKey: true,
-          domain: true
-        }
-      }) : []
-
-      const licenseMap = new Map(licenses.map(l => [l.licenseKey, l]))
-
-      const formattedSessions = sessionDetails.map(session => {
-        const license = session.licenseKey ? licenseMap.get(session.licenseKey) : null
-        const actualDomain = session.domain || license?.domain || 'Not configured'
-        
-        const startTime = session._min.timestamp
-        const endTime = session._max.timestamp
-        let duration = 0
-        
-        if (startTime && endTime) {
-          const diff = endTime.getTime() - startTime.getTime()
-          if (diff > 0 && diff < 86400000) { // Less than 24 hours
-            duration = Math.round(diff / 1000)
+          sessionId: true,
+          domain: true,
+          siteKey: true,
+          timestamp: true,
+          license: {
+            select: {
+              licenseKey: true,
+              domain: true,
+              customerName: true
+            }
           }
+        },
+        orderBy: { timestamp: 'desc' },
+        take: limit * 5
+      })
+
+      // Group sessions
+      const sessionMap = new Map()
+      sessionDetails.forEach(log => {
+        if (!sessionMap.has(log.sessionId)) {
+          sessionMap.set(log.sessionId, {
+            sessionId: log.sessionId,
+            domain: log.domain || log.license?.domain || 'Unknown',
+            licenseKey: auth.isMaster ? log.license?.licenseKey : undefined,
+            customerName: log.license?.customerName,
+            messageCount: 0,
+            startTime: log.timestamp,
+            lastActivity: log.timestamp
+          })
         }
-        
-        return {
-          sessionId: session.sessionId,
-          domain: actualDomain,
-          licenseKey: auth.isMaster ? session.licenseKey : undefined,
-          messageCount: session._count.id,
-          startTime,
-          lastActivity: endTime,
-          duration
+        const session = sessionMap.get(log.sessionId)
+        session.messageCount++
+        if (log.timestamp && session.startTime && log.timestamp < session.startTime) {
+          session.startTime = log.timestamp
+        }
+        if (log.timestamp && session.lastActivity && log.timestamp > session.lastActivity) {
+          session.lastActivity = log.timestamp
         }
       })
+
+      const formattedSessions = Array.from(sessionMap.values())
+        .slice(0, limit)
+        .map(session => {
+          const startTime = session.startTime
+          const endTime = session.lastActivity
+          let duration = 0
+          
+          if (startTime && endTime) {
+            const diff = endTime.getTime() - startTime.getTime()
+            if (diff > 0 && diff < 86400000) { // Less than 24 hours
+              duration = Math.round(diff / 1000)
+            }
+          }
+          
+          return {
+            ...session,
+            duration
+          }
+        })
 
       return NextResponse.json({
         summary: {

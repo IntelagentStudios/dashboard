@@ -69,7 +69,7 @@ export async function GET(
       usedAt: license.usedAt,
       lastIndexed: license.lastIndexed,
       plan: license.plan,
-      productType: license.productType,
+      products: license.products,
       subscriptionStatus: license.subscriptionStatus,
       lastPaymentDate: license.lastPaymentDate,
       nextBillingDate: license.nextBillingDate,

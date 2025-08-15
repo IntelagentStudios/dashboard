@@ -137,7 +137,8 @@ export async function GET() {
           plan: true,
           domain: true,
           createdAt: true,
-          usedAt: true
+          usedAt: true,
+          siteKey: true
         }
       })
 
@@ -145,10 +146,13 @@ export async function GET() {
         return NextResponse.json({ error: 'License not found' }, { status: 404 })
       }
 
+      // Build where clause for user's conversations
+      const userWhereClause = license.siteKey ? { siteKey: license.siteKey } : {}
+
       // Get user's conversations
       const userConversations = await prisma.chatbotLog.groupBy({
         by: ['sessionId'],
-        where: { licenseKey: auth.licenseKey },
+        where: userWhereClause,
         _count: true
       })
 
@@ -156,7 +160,7 @@ export async function GET() {
       const recentUserConversations = await prisma.chatbotLog.groupBy({
         by: ['sessionId'],
         where: {
-          licenseKey: auth.licenseKey,
+          ...userWhereClause,
           timestamp: { gte: sevenDaysAgo }
         },
         _count: true
@@ -164,14 +168,14 @@ export async function GET() {
 
       // Get message count
       const totalMessages = await prisma.chatbotLog.count({
-        where: { licenseKey: auth.licenseKey }
+        where: userWhereClause
       })
 
       // Get unique users (if tracked)
       const uniqueUsers = await prisma.chatbotLog.groupBy({
         by: ['userId'],
         where: {
-          licenseKey: auth.licenseKey,
+          ...userWhereClause,
           userId: { not: null }
         }
       })

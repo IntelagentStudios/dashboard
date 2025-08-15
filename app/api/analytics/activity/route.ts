@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           createdAt: true,
           usedAt: true,
           plan: true,
-          productType: true
+          products: true
         },
         orderBy: { createdAt: 'desc' },
         take: 20
@@ -54,12 +54,12 @@ export async function GET(request: NextRequest) {
             type: 'license_created',
             timestamp: license.createdAt,
             title: 'New License Created',
-            description: `${license.customerName || 'Unknown Customer'} - ${license.productType || 'Chatbot'}`,
+            description: `${license.customerName || 'Unknown Customer'} - ${license.products?.join(', ') || 'Chatbot'}`,
             metadata: {
               licenseKey: license.licenseKey,
               domain: license.domain,
               plan: license.plan,
-              productType: license.productType
+              products: license.products
             },
             icon: 'plus',
             color: 'green'
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     // 2. Get recent conversation sessions
     const recentSessions = await prisma.chatbotLog.groupBy({
-      by: ['sessionId', 'domain', 'licenseKey'],
+      by: ['sessionId', 'domain', 'siteKey'],
       where: {
         ...whereClause,
         timestamp: { gte: thirtyDaysAgo },
@@ -117,11 +117,11 @@ export async function GET(request: NextRequest) {
     })
 
     for (const session of recentSessions) {
-      // Get customer name for the session if we have a license key
+      // Get customer name for the session if we have a site key
       let license = null
-      if (session.licenseKey) {
+      if (session.siteKey) {
         license = await prisma.license.findUnique({
-          where: { licenseKey: session.licenseKey },
+          where: { siteKey: session.siteKey },
           select: { customerName: true, domain: true }
         })
       }

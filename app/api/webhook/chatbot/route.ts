@@ -14,13 +14,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If license_key is provided, validate it
+    // If site_key is provided, validate it
     let license = null
-    if (data.license_key) {
+    if (data.site_key) {
       license = await prisma.license.findUnique({
-        where: { licenseKey: data.license_key },
+        where: { siteKey: data.site_key },
         select: {
           licenseKey: true,
+          siteKey: true,
           status: true,
           domain: true,
           customerName: true
@@ -29,17 +30,17 @@ export async function POST(request: NextRequest) {
 
       // Log warning if license not found but don't reject the webhook
       if (!license) {
-        console.warn(`Invalid license key received: ${data.license_key}`)
+        console.warn(`Invalid site_key received: ${data.site_key}`)
       } else if (license.status !== 'active' && license.status !== 'trial') {
-        console.warn(`Inactive license used: ${data.license_key} (status: ${license.status})`)
+        console.warn(`Inactive license used: ${data.site_key} (status: ${license.status})`)
       }
     }
 
     // Prepare the chatbot log entry
     const chatbotLogData = {
       sessionId: data.session_id,
+      siteKey: data.site_key || null,
       domain: data.domain || license?.domain || null,
-      licenseKey: data.license_key || null,
       userId: data.user_id || null,
       conversationId: data.conversation_id || data.session_id,
       timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
@@ -57,12 +58,12 @@ export async function POST(request: NextRequest) {
       data: chatbotLogData
     })
 
-    // Update license last activity if we have a valid license key
-    if (data.license_key && license) {
+    // Update license last activity if we have a valid site_key
+    if (data.site_key && license) {
       const lastHour = new Date(Date.now() - 60 * 60 * 1000)
       const recentActivity = await prisma.chatbotLog.findFirst({
         where: {
-          licenseKey: data.license_key,
+          siteKey: data.site_key,
           sessionId: data.session_id,
           timestamp: { gte: lastHour }
         },
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       if (!recentActivity || recentActivity.id === log.id) {
         // This is either the first message or a new session
         await prisma.license.update({
-          where: { licenseKey: data.license_key },
+          where: { siteKey: data.site_key },
           data: {
             usedAt: new Date()
           }
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
       by: ['sessionId'],
       where: {
         sessionId: data.session_id,
-        ...(data.license_key ? { licenseKey: data.license_key } : {})
+        ...(data.site_key ? { siteKey: data.site_key } : {})
       },
       _count: { id: true },
       _min: { timestamp: true },
@@ -135,8 +136,9 @@ export async function GET() {
     endpoint: '/api/webhook/chatbot',
     accepts: 'POST',
     fields: {
-      required: ['session_id', 'license_key'],
+      required: ['session_id'],
       optional: [
+        'site_key',
         'domain',
         'user_id', 
         'customer_message',
@@ -147,6 +149,7 @@ export async function GET() {
         'conversation_id',
         'role'
       ]
-    }
+    },
+    note: 'This endpoint now uses site_key instead of license_key to link conversations to licenses'
   })
 }
