@@ -36,7 +36,7 @@ export async function GET(
         usedAt: true,
         lastIndexed: true,
         plan: true,
-        productType: true,
+        products: true,
         subscriptionStatus: true,
         lastPaymentDate: true,
         nextBillingDate: true,

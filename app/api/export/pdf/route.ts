@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       licenses: licenses.slice(0, 5).map(l => ({
         licenseKey: l.licenseKey,
         customerName: l.customerName || 'N/A',
-        productType: l.productType || 'chatbot',
+        products: l.products || ['chatbot'],
       })),
       topConversations: conversations.slice(0, 5).map(c => ({
         domain: c.domain || 'Unknown',

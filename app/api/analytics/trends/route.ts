@@ -47,23 +47,40 @@ export async function POST(request: NextRequest) {
     }
 
     if (!auth.isMaster) {
-      whereClause.licenseKey = auth.licenseKey
+      // For individual users, filter by their site_key
+      const userLicense = await prisma.license.findUnique({
+        where: { licenseKey: auth.licenseKey },
+        select: { siteKey: true }
+      })
+      if (userLicense?.siteKey) {
+        whereClause.siteKey = userLicense.siteKey
+      }
     } else if (productType) {
       // For master admin, filter by product type if specified
       const licensesWithProduct = await prisma.license.findMany({
-        where: { productType },
-        select: { licenseKey: true }
+        where: { 
+          products: { has: productType }
+        },
+        select: { siteKey: true }
       })
-      whereClause.licenseKey = { in: licensesWithProduct.map(l => l.licenseKey) }
+      const siteKeys = licensesWithProduct.map(l => l.siteKey).filter(Boolean)
+      if (siteKeys.length > 0) {
+        whereClause.siteKey = { in: siteKeys }
+      }
     }
 
-    // Get conversation logs
+    // Get conversation logs with license info
     const logs = await prisma.chatbotLog.findMany({
       where: whereClause,
       select: {
         timestamp: true,
         sessionId: true,
-        licenseKey: true
+        siteKey: true,
+        license: {
+          select: {
+            licenseKey: true
+          }
+        }
       },
       orderBy: { timestamp: 'asc' }
     })
@@ -96,11 +113,11 @@ export async function POST(request: NextRequest) {
       sessionsByDate.get(dateKey)!.add(log.sessionId!)
 
       // Track unique licenses per date
-      if (log.licenseKey) {
+      if (log.license?.licenseKey) {
         if (!licensesByDate.has(dateKey)) {
           licensesByDate.set(dateKey, new Set())
         }
-        licensesByDate.get(dateKey)!.add(log.licenseKey)
+        licensesByDate.get(dateKey)!.add(log.license.licenseKey)
       }
     })
 

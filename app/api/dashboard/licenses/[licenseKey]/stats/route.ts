@@ -24,12 +24,29 @@ export async function GET(
       )
     }
 
-    // Get conversation and session stats
+    // Get the license's siteKey
+    const license = await prisma.license.findUnique({
+      where: { licenseKey: params.licenseKey },
+      select: { siteKey: true }
+    })
+
+    if (!license || !license.siteKey) {
+      return NextResponse.json({
+        totalConversations: 0,
+        totalSessions: 0,
+        avgSessionDuration: 'N/A',
+        avgMessagesPerSession: 0,
+        lastActivity: null,
+        peakUsageHour: 0
+      })
+    }
+
+    // Get conversation and session stats using siteKey
     const [totalConversations, sessions, recentActivity] = await Promise.all([
       // Total conversations
       prisma.chatbotLog.count({
         where: { 
-          licenseKey: params.licenseKey,
+          siteKey: license.siteKey,
           role: 'user'
         }
       }),
@@ -38,7 +55,7 @@ export async function GET(
       prisma.chatbotLog.groupBy({
         by: ['sessionId'],
         where: {
-          licenseKey: params.licenseKey,
+          siteKey: license.siteKey,
           sessionId: { not: null }
         },
         _count: {
@@ -54,7 +71,7 @@ export async function GET(
 
       // Recent activity
       prisma.chatbotLog.findFirst({
-        where: { licenseKey: params.licenseKey },
+        where: { siteKey: license.siteKey },
         orderBy: { timestamp: 'desc' },
         select: { timestamp: true }
       })
@@ -96,7 +113,7 @@ export async function GET(
     const hourlyActivity = await prisma.chatbotLog.groupBy({
       by: ['timestamp'],
       where: {
-        licenseKey: params.licenseKey,
+        siteKey: license.siteKey,
         timestamp: { not: null }
       },
       _count: true

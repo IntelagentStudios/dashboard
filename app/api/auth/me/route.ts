@@ -32,7 +32,7 @@ export async function GET() {
       isMaster: false,
       customerName: license?.customerName,
       email: license?.email,
-      productType: license?.productType,
+      products: license?.products,
     })
   } catch (error) {
     console.error('Auth check error:', error)
