@@ -19,6 +19,7 @@ import {
   Tag
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { useDashboardStore } from '@/lib/store'
 
 interface Message {
   id: number
@@ -45,10 +46,11 @@ export default function ChatbotConversations({ licenseKey }: { licenseKey?: stri
   const [searchTerm, setSearchTerm] = useState('')
   const [filterDomain, setFilterDomain] = useState<string>('')
   const [expandedConversations, setExpandedConversations] = useState<Set<string>>(new Set())
+  const { selectedProduct } = useDashboardStore()
 
   useEffect(() => {
     fetchConversations()
-  }, [licenseKey])
+  }, [licenseKey, selectedProduct])
 
   const fetchConversations = async () => {
     setIsLoading(true)
@@ -57,6 +59,10 @@ export default function ChatbotConversations({ licenseKey }: { licenseKey?: stri
         view: 'recent',
         limit: '50'
       })
+      
+      if (selectedProduct) {
+        params.set('product', selectedProduct)
+      }
       
       const response = await fetch(`/api/dashboard/chatbot/sessions?${params}`)
       if (response.ok) {

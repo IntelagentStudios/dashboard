@@ -31,14 +31,18 @@ import CustomerUsageSummary from './customer-usage-summary'
 import ChatbotConversations from './chatbot-conversations'
 import LicensesTable from './licenses-table'
 import ProductsView from './products-view'
+import ProductSwitcher from './product-switcher'
+import AIInsights from './ai-insights'
 
 export default function DashboardClient() {
   const [authData, setAuthData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [userProducts, setUserProducts] = useState<string[]>([])
+  const [userLicense, setUserLicense] = useState<any>(null)
   const router = useRouter()
   const { toast } = useToast()
-  const { isRealtime, setRealtime } = useDashboardStore()
+  const { isRealtime, setRealtime, selectedProduct, setSelectedProduct, isPremium, setPremium } = useDashboardStore()
 
   useEffect(() => {
     fetchAuthData()
@@ -56,6 +60,22 @@ export default function DashboardClient() {
       if (response.ok) {
         const data = await response.json()
         setAuthData(data)
+        
+        // Fetch user's license details if not master
+        if (!data.isMaster && data.licenseKey) {
+          const licenseResponse = await fetch(`/api/dashboard/licenses/${data.licenseKey}`)
+          if (licenseResponse.ok) {
+            const licenseData = await licenseResponse.json()
+            setUserLicense(licenseData)
+            setUserProducts(licenseData.products || [])
+            // Check if user has premium plan
+            setPremium(licenseData.plan === 'premium' || licenseData.plan === 'enterprise')
+            // Set initial product if user has products
+            if (licenseData.products && licenseData.products.length > 0) {
+              setSelectedProduct(licenseData.products[0])
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to fetch auth data:', error)
@@ -150,6 +170,14 @@ export default function DashboardClient() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {!isMaster && userProducts.length > 0 && (
+                <ProductSwitcher
+                  products={userProducts}
+                  currentProduct={selectedProduct}
+                  isPremium={isPremium}
+                  onProductChange={(product) => setSelectedProduct(product)}
+                />
+              )}
               <RealtimeIndicator />
               <Button
                 variant="outline"
@@ -316,6 +344,9 @@ export default function DashboardClient() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
+              {isPremium && selectedProduct === 'combined' && (
+                <AIInsights />
+              )}
               <div className="grid gap-4 md:grid-cols-2">
                 <CustomerUsageSummary />
                 <Card>

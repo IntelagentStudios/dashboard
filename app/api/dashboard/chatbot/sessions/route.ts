@@ -16,16 +16,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const view = searchParams.get('view') || 'all' // all, by-domain, recent
     const domain = searchParams.get('domain')
+    const product = searchParams.get('product')
     const limit = parseInt(searchParams.get('limit') || '50')
 
-    // For non-master users, get their site_key first
+    // For non-master users, get their site_key and products first
     let userSiteKey: string | null = null
+    let userProducts: string[] = []
     if (!auth.isMaster) {
       const userLicense = await prisma.license.findUnique({
         where: { licenseKey: auth.licenseKey },
-        select: { siteKey: true }
+        select: { siteKey: true, products: true }
       })
       userSiteKey = userLicense?.siteKey || null
+      userProducts = userLicense?.products || []
       
       // If user has no siteKey, return empty results
       if (!userSiteKey) {
@@ -47,6 +50,30 @@ export async function GET(request: NextRequest) {
     // Filter by domain if specified
     if (domain) {
       whereClause.domain = domain
+    }
+
+    // Handle product filtering for non-master users
+    if (!auth.isMaster && product) {
+      // For now, only return data if chatbot is selected or combined view
+      // In future, add filtering based on product-specific tables
+      if (product !== 'chatbot' && product !== 'combined') {
+        // Return empty for other products as we don't have their data yet
+        return NextResponse.json({ sessions: [] })
+      }
+      // For combined view, check if user has premium
+      if (product === 'combined') {
+        const userLicense = await prisma.license.findUnique({
+          where: { licenseKey: auth.licenseKey },
+          select: { plan: true }
+        })
+        const isPremium = userLicense?.plan === 'premium' || userLicense?.plan === 'enterprise'
+        if (!isPremium) {
+          return NextResponse.json({ 
+            sessions: [],
+            error: 'Premium required for combined view'
+          })
+        }
+      }
     }
 
     if (view === 'by-domain') {
