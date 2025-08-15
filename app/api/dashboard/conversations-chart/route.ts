@@ -24,8 +24,19 @@ export async function POST(request: Request) {
       },
     }
 
-    if (!auth.isMaster) {
-      whereClause.licenseKey = auth.licenseKey
+    if (!auth.isMaster && auth.licenseKey) {
+      // Get the user's siteKey from their licenseKey
+      const userLicense = await prisma.license.findUnique({
+        where: { licenseKey: auth.licenseKey },
+        select: { siteKey: true }
+      })
+      
+      if (userLicense?.siteKey) {
+        whereClause.siteKey = userLicense.siteKey
+      } else {
+        // No siteKey found, return empty data
+        return NextResponse.json([])
+      }
     }
 
     const conversations = await prisma.chatbotLog.findMany({

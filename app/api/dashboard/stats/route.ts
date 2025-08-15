@@ -15,9 +15,30 @@ export async function GET(request: Request) {
       )
     }
 
-    let whereClause = {}
-    if (!auth.isMaster) {
-      whereClause = { licenseKey: auth.licenseKey }
+    let whereClause: any = {}
+    let userSiteKey: string | null = null
+    
+    if (!auth.isMaster && auth.licenseKey) {
+      // Get the user's siteKey from their licenseKey
+      const userLicense = await prisma.license.findUnique({
+        where: { licenseKey: auth.licenseKey },
+        select: { siteKey: true }
+      })
+      
+      if (userLicense?.siteKey) {
+        whereClause.siteKey = userLicense.siteKey
+        userSiteKey = userLicense.siteKey
+      } else {
+        // No siteKey found, return zeros
+        return NextResponse.json({
+          totalLicenses: auth.isMaster ? 0 : 1,
+          activeConversations: 0,
+          monthlyGrowth: 0,
+          revenue: 0,
+          responseTime: null,
+          sessionsToday: 0,
+        })
+      }
     }
 
     // If requesting previous period stats
