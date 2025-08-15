@@ -40,9 +40,8 @@ export async function GET() {
     })
 
     // Check what data would be returned WITH siteKey filtering
-    let filteredBySiteKey = []
-    if (userLicense?.siteKey) {
-      filteredBySiteKey = await prisma.chatbotLog.groupBy({
+    const filteredBySiteKey = userLicense?.siteKey ? 
+      await prisma.chatbotLog.groupBy({
         by: ['sessionId', 'siteKey', 'domain'],
         where: {
           siteKey: userLicense.siteKey,
@@ -55,8 +54,7 @@ export async function GET() {
             sessionId: 'desc'
           }
         }
-      })
-    }
+      }) : []
 
     // Check for NULL siteKey records
     const nullSiteKeyRecords = await prisma.chatbotLog.count({
