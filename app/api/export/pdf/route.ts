@@ -16,8 +16,15 @@ export async function POST(request: NextRequest) {
     const { type, dateRange } = await request.json()
 
     let whereClause: any = {}
-    if (!auth.isMaster) {
-      whereClause.licenseKey = auth.licenseKey
+    if (!auth.isMaster && auth.licenseKey) {
+      // Find the user's siteKey from their licenseKey
+      const userLicense = await prisma.license.findUnique({
+        where: { licenseKey: auth.licenseKey },
+        select: { siteKey: true }
+      })
+      if (userLicense?.siteKey) {
+        whereClause.siteKey = userLicense.siteKey
+      }
     }
 
     if (dateRange?.from && dateRange?.to) {
