@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { getAuthFromCookies } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
+// Note: SmartDashboardRequest model doesn't have a metadata field
+// Store product and suggestions in the response text instead
+
 // You can use OpenAI or Anthropic - this example shows both options
 // Uncomment the one you want to use
 
@@ -89,8 +92,8 @@ export async function POST(request: Request) {
     aiResponse = generateMockResponse(query, data)
     suggestions = generateMockSuggestions(query)
 
-    // Save the request to database
-    await prisma.smartDashboardRequest.create({
+    // Save the request to database (without metadata field)
+    const savedRequest = await prisma.smartDashboardRequest.create({
       data: {
         licenseKey: auth.licenseKey,
         requestType: 'query',
