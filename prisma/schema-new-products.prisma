@@ -1,0 +1,92 @@
+// Add these models to your schema.prisma file for new products
+
+model SetupAgentLog {
+  id                Int       @id @default(autoincrement())
+  sessionId         String?   @map("session_id") @db.VarChar(255)
+  siteKey           String?   @map("site_key") @db.VarChar(255)
+  domain            String?   @db.VarChar(255)
+  userId            String?   @map("user_id") @db.VarChar(255)
+  
+  // Setup-specific fields
+  setupType         String?   @map("setup_type") @db.VarChar(100)
+  stepCompleted     String?   @map("step_completed") @db.VarChar(255)
+  configuration     Json?     @db.Json
+  status            String?   @db.VarChar(50) // completed, in_progress, failed
+  errorMessage      String?   @map("error_message") @db.Text
+  duration          Int?      // Duration in seconds
+  
+  timestamp         DateTime? @db.Timestamp(6)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  
+  license           License?  @relation(fields: [siteKey], references: [siteKey])
+  
+  @@map("setup_agent_logs")
+  @@schema("public")
+}
+
+model EmailAssistantLog {
+  id                Int       @id @default(autoincrement())
+  sessionId         String?   @map("session_id") @db.VarChar(255)
+  siteKey           String?   @map("site_key") @db.VarChar(255)
+  domain            String?   @db.VarChar(255)
+  userId            String?   @map("user_id") @db.VarChar(255)
+  
+  // Email-specific fields
+  emailId           String?   @map("email_id") @db.VarChar(255)
+  subject           String?   @db.Text
+  sender            String?   @db.VarChar(255)
+  recipient         String?   @db.VarChar(255)
+  action            String?   @db.VarChar(100) // draft, sent, replied, forwarded
+  aiSuggestion      String?   @map("ai_suggestion") @db.Text
+  userResponse      String?   @map("user_response") @db.Text
+  sentiment         String?   @db.VarChar(50) // positive, negative, neutral
+  priority          String?   @db.VarChar(50) // high, medium, low
+  
+  timestamp         DateTime? @db.Timestamp(6)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  
+  license           License?  @relation(fields: [siteKey], references: [siteKey])
+  
+  @@map("email_assistant_logs")
+  @@schema("public")
+}
+
+model VoiceAssistantLog {
+  id                Int       @id @default(autoincrement())
+  sessionId         String?   @map("session_id") @db.VarChar(255)
+  siteKey           String?   @map("site_key") @db.VarChar(255)
+  domain            String?   @db.VarChar(255)
+  userId            String?   @map("user_id") @db.VarChar(255)
+  
+  // Voice-specific fields
+  callId            String?   @map("call_id") @db.VarChar(255)
+  phoneNumber       String?   @map("phone_number") @db.VarChar(50)
+  direction         String?   @db.VarChar(20) // inbound, outbound
+  duration          Int?      // Duration in seconds
+  transcript        String?   @db.Text
+  intent            String?   @db.VarChar(255)
+  resolution        String?   @db.VarChar(255)
+  transferredTo     String?   @map("transferred_to") @db.VarChar(255)
+  recordingUrl      String?   @map("recording_url") @db.Text
+  
+  timestamp         DateTime? @db.Timestamp(6)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  
+  license           License?  @relation(fields: [siteKey], references: [siteKey])
+  
+  @@map("voice_assistant_logs")
+  @@schema("public")
+}
+
+// Update the License model to include relations to new product logs
+model License {
+  // ... existing fields ...
+  
+  chatbotLogs        ChatbotLog[]
+  setupAgentLogs     SetupAgentLog[]
+  emailAssistantLogs EmailAssistantLog[]
+  voiceAssistantLogs VoiceAssistantLog[]
+  
+  @@map("licenses")
+  @@schema("public")
+}
