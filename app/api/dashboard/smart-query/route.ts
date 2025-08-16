@@ -153,7 +153,12 @@ async function fetchRelevantData(query: string, siteKey: string | null | undefin
       by: ['sessionId'],
       where: siteKey ? { siteKey } : {},
       _count: true,
-      take: 100
+      take: 100,
+      orderBy: {
+        _count: {
+          sessionId: 'desc'
+        }
+      }
     })
     data.summary.totalConversations = conversations.length
     data.details = conversations
@@ -182,7 +187,10 @@ async function fetchRelevantData(query: string, siteKey: string | null | undefin
         }
       },
       _count: true,
-      take: 7
+      take: 7,
+      orderBy: {
+        timestamp: 'desc'
+      }
     })
     data.charts = { trends }
   }
