@@ -24,9 +24,10 @@ interface ProductSwitcherProps {
 
 const productInfo: Record<string, { name: string; icon: any; color: string }> = {
   chatbot: { name: 'Chatbot', icon: Package, color: 'text-blue-500' },
-  setup_agent: { name: 'Setup Agent', icon: Package, color: 'text-green-500' },
-  email_assistant: { name: 'Email Assistant', icon: Package, color: 'text-purple-500' },
-  voice_assistant: { name: 'Voice Assistant', icon: Package, color: 'text-orange-500' },
+  // Future products - uncomment when ready
+  // setup_agent: { name: 'Setup Agent', icon: Package, color: 'text-green-500' },
+  // email_assistant: { name: 'Email Assistant', icon: Package, color: 'text-purple-500' },
+  // voice_assistant: { name: 'Voice Assistant', icon: Package, color: 'text-orange-500' },
   combined: { name: 'All Products', icon: Sparkles, color: 'text-gradient' }
 }
 
