@@ -5,9 +5,14 @@ import { prisma } from '@/lib/db'
 // Note: SmartDashboardRequest model doesn't have a metadata field
 // Store product and suggestions in the response text instead
 
-// You can use OpenAI or Anthropic - this example shows both options
-// Uncomment the one you want to use
+// Groq Integration - Fast LLM for real-time responses
+import Groq from 'groq-sdk'
 
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+})
+
+// Alternative options (uncomment to use):
 // Option 1: OpenAI
 // import OpenAI from 'openai'
 // const openai = new OpenAI({
@@ -64,33 +69,30 @@ export async function POST(request: Request) {
     let aiResponse = ''
     let suggestions: string[] = []
     
-    // For now, use a mock response. Uncomment the LLM integration you want to use:
-    
-    // Option 1: OpenAI
-    // const completion = await openai.chat.completions.create({
-    //   model: "gpt-4-turbo-preview",
-    //   messages: [
-    //     { role: "system", content: systemPrompt },
-    //     { role: "user", content: query }
-    //   ],
-    //   temperature: 0.7,
-    //   max_tokens: 500
-    // })
-    // aiResponse = completion.choices[0].message.content || ''
-
-    // Option 2: Anthropic Claude
-    // const completion = await anthropic.messages.create({
-    //   model: "claude-3-sonnet-20240229",
-    //   max_tokens: 500,
-    //   temperature: 0.7,
-    //   system: systemPrompt,
-    //   messages: [{ role: "user", content: query }]
-    // })
-    // aiResponse = completion.content[0].text
-
-    // Mock response for testing (remove when using real LLM)
-    aiResponse = generateMockResponse(query, data)
-    suggestions = generateMockSuggestions(query)
+    try {
+      // Use Groq for fast LLM responses
+      const completion = await groq.chat.completions.create({
+        model: "mixtral-8x7b-32768", // Fast and capable model
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: query }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+        stream: false
+      })
+      
+      aiResponse = completion.choices[0]?.message?.content || generateMockResponse(query, data)
+      
+      // Generate suggestions based on the response
+      suggestions = generateSmartSuggestions(query, aiResponse)
+      
+    } catch (error) {
+      console.error('Groq API error:', error)
+      // Fallback to mock response if Groq fails
+      aiResponse = generateMockResponse(query, data)
+      suggestions = generateMockSuggestions(query)
+    }
 
     // Save the request to database (without metadata field)
     const savedRequest = await prisma.smartDashboardRequest.create({
@@ -236,6 +238,38 @@ function generateMockResponse(query: string, data: any): string {
   with ${data.summary.monthlyActivity || 0} interactions this month.
   
   Would you like me to dive deeper into any specific aspect?`
+}
+
+function generateSmartSuggestions(query: string, response: string): string[] {
+  const suggestions = []
+  
+  // Analyze the response and query to generate relevant follow-ups
+  const queryLower = query.toLowerCase()
+  const responseLower = response.toLowerCase()
+  
+  if (responseLower.includes('conversation') || responseLower.includes('chat')) {
+    suggestions.push("Show me peak conversation hours")
+    suggestions.push("What's the average session duration?")
+  }
+  
+  if (responseLower.includes('performance') || responseLower.includes('metric')) {
+    suggestions.push("Compare this week to last week")
+    suggestions.push("What areas need improvement?")
+  }
+  
+  if (responseLower.includes('trend') || responseLower.includes('growth')) {
+    suggestions.push("Predict next month's metrics")
+    suggestions.push("What's driving this trend?")
+  }
+  
+  // Add general suggestions if needed
+  if (suggestions.length === 0) {
+    suggestions.push("Show me today's summary")
+    suggestions.push("What should I focus on?")
+    suggestions.push("Generate a weekly report")
+  }
+  
+  return suggestions.slice(0, 3)
 }
 
 function generateMockSuggestions(query: string): string[] {

@@ -34,19 +34,18 @@ Required fields:
 }
 ```
 
-### 3. Smart Dashboard AI (Optional)
+### 3. Smart Dashboard AI
 
 To enable AI responses:
 
-1. Add to environment variables:
-   - `OPENAI_API_KEY=sk-...` OR
-   - `ANTHROPIC_API_KEY=...`
+1. Add to Railway environment variables:
+   - `GROQ_API_KEY=your-groq-api-key` (get from https://console.groq.com/keys)
+   - Uses mixtral-8x7b-32768 model for fast responses
 
-2. Install SDK:
-   - `npm install openai` OR
-   - `npm install @anthropic-ai/sdk`
-
-3. Uncomment code in `/app/api/dashboard/smart-query/route.ts`
+2. Alternative options available:
+   - `OPENAI_API_KEY=sk-...` for OpenAI
+   - `ANTHROPIC_API_KEY=...` for Claude
+   - Uncomment the relevant section in `/app/api/dashboard/smart-query/route.ts`
 
 ## Features Available Now
 

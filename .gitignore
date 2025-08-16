@@ -47,4 +47,5 @@ nextjs-dashboard/nul
 
 # Other files
 websocket-server.js
+GROQ_API_KEY.txt
 "@ | Out-File -FilePath .gitignore -Encoding utf8
