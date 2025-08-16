@@ -96,7 +96,7 @@ export async function POST(request: Request) {
         requestType: 'query',
         query: query,
         response: aiResponse,
-        metadata: { product, suggestions }
+        processedAt: new Date()
       }
     })
 
