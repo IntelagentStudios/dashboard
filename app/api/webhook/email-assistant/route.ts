@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+// NOTE: This endpoint requires the EmailAssistantLog table to be added to your database
+// See prisma/schema-new-products.prisma for the schema
+// Run: npx prisma migrate dev --name add-email-assistant
+
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
@@ -23,7 +27,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create email assistant log
-    const emailLog = await prisma.emailAssistantLog.create({
+    // Uncomment when EmailAssistantLog table is added to database
+    /* const emailLog = await prisma.emailAssistantLog.create({
       data: {
         sessionId: data.session_id || null,
         siteKey: data.site_key,
@@ -40,12 +45,16 @@ export async function POST(request: NextRequest) {
         priority: data.priority || null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
       }
-    })
+    }) */
 
+    // For now, just acknowledge receipt until table is created
     return NextResponse.json({
       success: true,
-      id: emailLog.id,
-      message: 'Email assistant log created successfully'
+      message: 'Email assistant webhook received (table not yet created)',
+      data: {
+        email_id: data.email_id,
+        site_key: data.site_key
+      }
     })
     
   } catch (error) {

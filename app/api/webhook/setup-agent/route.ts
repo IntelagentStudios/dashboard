@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+// NOTE: This endpoint requires the SetupAgentLog table to be added to your database
+// See prisma/schema-new-products.prisma for the schema
+// Run: npx prisma migrate dev --name add-setup-agent
+
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
@@ -23,7 +27,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create setup agent log
-    const setupLog = await prisma.setupAgentLog.create({
+    // Uncomment when SetupAgentLog table is added to database
+    /* const setupLog = await prisma.setupAgentLog.create({
       data: {
         sessionId: data.session_id,
         siteKey: data.site_key,
@@ -37,12 +42,16 @@ export async function POST(request: NextRequest) {
         duration: data.duration || null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
       }
-    })
+    }) */
 
+    // For now, just acknowledge receipt until table is created
     return NextResponse.json({
       success: true,
-      id: setupLog.id,
-      message: 'Setup agent log created successfully'
+      message: 'Setup agent webhook received (table not yet created)',
+      data: {
+        session_id: data.session_id,
+        site_key: data.site_key
+      }
     })
     
   } catch (error) {

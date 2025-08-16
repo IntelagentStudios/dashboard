@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 
+// NOTE: This endpoint requires the VoiceAssistantLog table to be added to your database
+// See prisma/schema-new-products.prisma for the schema
+// Run: npx prisma migrate dev --name add-voice-assistant
+
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
@@ -23,7 +27,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Create voice assistant log
-    const voiceLog = await prisma.voiceAssistantLog.create({
+    // Uncomment when VoiceAssistantLog table is added to database
+    /* const voiceLog = await prisma.voiceAssistantLog.create({
       data: {
         sessionId: data.session_id || null,
         siteKey: data.site_key,
@@ -40,12 +45,16 @@ export async function POST(request: NextRequest) {
         recordingUrl: data.recording_url || null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
       }
-    })
+    }) */
 
+    // For now, just acknowledge receipt until table is created
     return NextResponse.json({
       success: true,
-      id: voiceLog.id,
-      message: 'Voice assistant log created successfully'
+      message: 'Voice assistant webhook received (table not yet created)',
+      data: {
+        call_id: data.call_id,
+        site_key: data.site_key
+      }
     })
     
   } catch (error) {
