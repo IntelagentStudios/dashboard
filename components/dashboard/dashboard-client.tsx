@@ -18,7 +18,8 @@ import {
   Package,
   Activity,
   Globe,
-  Clock
+  Clock,
+  Brain
 } from 'lucide-react'
 import { useDashboardStore } from '@/lib/store'
 import { useToast } from '@/hooks/use-toast'
@@ -33,6 +34,7 @@ import LicensesTable from './licenses-table'
 import ProductsView from './products-view'
 import ProductSwitcher from './product-switcher'
 import AIInsights from './ai-insights'
+import SmartDashboard from './smart-dashboard'
 
 export default function DashboardClient() {
   const [authData, setAuthData] = useState<any>(null)
@@ -328,7 +330,7 @@ export default function DashboardClient() {
         ) : (
           // Customer View
           <Tabs defaultValue="overview" className="mt-8">
-            <TabsList className="grid w-full grid-cols-3 max-w-md">
+            <TabsList className="grid w-full grid-cols-4 max-w-md">
               <TabsTrigger value="overview">
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Overview
@@ -336,6 +338,10 @@ export default function DashboardClient() {
               <TabsTrigger value="conversations">
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Conversations
+              </TabsTrigger>
+              <TabsTrigger value="smart">
+                <Brain className="h-4 w-4 mr-2" />
+                Smart
               </TabsTrigger>
               <TabsTrigger value="settings">
                 <Settings className="h-4 w-4 mr-2" />
@@ -406,6 +412,10 @@ export default function DashboardClient() {
 
             <TabsContent value="conversations">
               <ChatbotConversations />
+            </TabsContent>
+
+            <TabsContent value="smart">
+              <SmartDashboard />
             </TabsContent>
 
             <TabsContent value="settings" className="space-y-4">
